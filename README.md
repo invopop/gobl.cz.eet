@@ -87,6 +87,9 @@ request, err := signer.Sign(sale)
 // and the eet.SOAPAction header, then read the answer:
 res, err := eet.ParseResponse(body, eet.DefaultTrust())
 switch {
+case err != nil:
+	// a SOAP fault, an unreadable answer, or a confirmation that isn't
+	// genuine: nothing to keep, send again later
 case res.Header == nil || res.Header.UUID != sale.Header.UUID:
 	// not the answer to this message: don't keep anything from it
 case res.Confirmation != nil:
