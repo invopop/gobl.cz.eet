@@ -10,6 +10,26 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.116.0 // indirect
+	github.com/Masterminds/semver/v3 v3.3.0 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.1.2 // indirect
+	github.com/expr-lang/expr v1.17.8 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/invopop/jsonschema v0.14.0 // indirect
+	github.com/invopop/yaml v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/magefile/mage v1.15.0 // indirect
+	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
+	golang.org/x/text v0.41.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+require (
+	github.com/invopop/gobl v0.511.2-0.20261106101416-7bfc167252cb
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
