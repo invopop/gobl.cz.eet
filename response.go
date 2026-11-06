@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/beevik/etree"
 )
@@ -41,6 +42,23 @@ type Confirmation struct {
 	Test bool `xml:"test,attr"`
 }
 
+// UnmarshalXML reads a Potvrzeni element, refusing one without a POK
+// rather than giving an empty confirmation code.
+func (c *Confirmation) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var raw struct {
+		POK  string `xml:"pok,attr"`
+		Test bool   `xml:"test,attr"`
+	}
+	if err := d.DecodeElement(&raw, &start); err != nil {
+		return err
+	}
+	if raw.POK == "" {
+		return errors.New("eet: confirmation without a POK")
+	}
+	*c = Confirmation{POK: raw.POK, Test: raw.Test}
+	return nil
+}
+
 // Error (Chyba) explains why a sale was not recorded. In verification mode,
 // code 0 says the message passed every check.
 type Error struct {
@@ -52,6 +70,25 @@ type Error struct {
 // Error gives the code and the service's text.
 func (e *Error) Error() string {
 	return fmt.Sprintf("eet: error %d: %s", e.Code, e.Message)
+}
+
+// UnmarshalXML reads a Chyba element, refusing one without a numeric code:
+// a missing code would otherwise read as 0, the verification success.
+func (e *Error) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var raw struct {
+		Code    string `xml:"kod,attr"`
+		Test    bool   `xml:"test,attr"`
+		Message string `xml:",chardata"`
+	}
+	if err := d.DecodeElement(&raw, &start); err != nil {
+		return err
+	}
+	code, err := strconv.Atoi(raw.Code)
+	if err != nil {
+		return fmt.Errorf("eet: error code %q is not a number", raw.Code)
+	}
+	*e = Error{Code: ErrorCode(code), Test: raw.Test, Message: raw.Message}
+	return nil
 }
 
 // Warning (Varovani) about a sale that was recorded all the same.

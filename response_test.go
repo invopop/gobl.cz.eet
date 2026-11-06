@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"encoding/xml"
 	"os"
 	"strings"
 	"testing"
@@ -191,6 +192,37 @@ func TestParseIgnoresUnsignedDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ErrorCodeSchema, res.Error.Code)
 	})
+}
+
+// An error without a code must not read as code 0, which in verification
+// mode means success.
+func TestParseErrorNeedsCode(t *testing.T) {
+	errorSchema := string(readResponse(t, "error-schema"))
+	tests := map[string]string{
+		"missing":    strings.Replace(errorSchema, `kod="3" `, ``, 1),
+		"empty":      strings.Replace(errorSchema, `kod="3"`, `kod=""`, 1),
+		"not number": strings.Replace(errorSchema, `kod="3"`, `kod="tři"`, 1),
+	}
+	for name, data := range tests {
+		t.Run(name, func(t *testing.T) {
+			require.NotEqual(t, errorSchema, data)
+			_, err := ParseResponse([]byte(data), playgroundTrust())
+			assert.ErrorContains(t, err, "eet: reading response: eet: error code")
+		})
+	}
+}
+
+// A confirmation without a POK is refused when it is read. Through
+// ParseResponse, removing the POK from a signed reply fails the digest
+// first, so the check is tested on the element itself.
+func TestConfirmationNeedsPOK(t *testing.T) {
+	c := new(Confirmation)
+	err := xml.Unmarshal([]byte(`<Potvrzeni xmlns="http://fs.gov.cz/eet/schema/v4" test="true"/>`), c)
+	assert.EqualError(t, err, "eet: confirmation without a POK")
+
+	err = xml.Unmarshal([]byte(`<Potvrzeni xmlns="http://fs.gov.cz/eet/schema/v4" pok="9765cced-b373-4a13-bbdc-986a62bc3544-ff" test="true"/>`), c)
+	require.NoError(t, err)
+	assert.Equal(t, &Confirmation{POK: "9765cced-b373-4a13-bbdc-986a62bc3544-ff", Test: true}, c)
 }
 
 func TestParseMalformedResponses(t *testing.T) {
