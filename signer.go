@@ -62,6 +62,9 @@ func (s *Signer) Sign(sale *Sale) ([]byte, error) {
 	if sale == nil || sale.Header == nil || sale.Data == nil {
 		return nil, errors.New("eet: sale needs a header and data")
 	}
+	if sale.Header.UUID == "" {
+		return nil, errors.New("eet: sale needs a message UUID")
+	}
 	return s.sign(sale, sale.Header.UUID)
 }
 

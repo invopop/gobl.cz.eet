@@ -114,7 +114,7 @@ func TestVerifyOfficialSamples(t *testing.T) {
 // SignedInfo we build: our request canonicalizes byte for byte like the
 // official one, so the same key would sign it identically.
 func TestSignReproducesOfficialSamples(t *testing.T) {
-	signer := newTestSigner(t, "CZ00000019")
+	signer := newTestSigner(t)
 	for _, sample := range officialSamples {
 		t.Run(sample.name, func(t *testing.T) {
 			official := readSample(t, sample.name)
@@ -147,7 +147,7 @@ func TestSignReproducesOfficialSamples(t *testing.T) {
 }
 
 func TestSignUsesMessageUUIDForIDs(t *testing.T) {
-	signer := newTestSigner(t, "CZ00000019")
+	signer := newTestSigner(t)
 	data, err := signer.Sign(officialSamples[0].sale)
 	require.NoError(t, err)
 
@@ -159,11 +159,17 @@ func TestSignUsesMessageUUIDForIDs(t *testing.T) {
 }
 
 func TestSignNeedsHeaderAndData(t *testing.T) {
-	signer := newTestSigner(t, "CZ00000019")
+	signer := newTestSigner(t)
 	_, err := signer.Sign(&Sale{Header: &Header{UUID: "03965780-6457-4842-bd80-5f9195c0b8c8"}})
 	assert.EqualError(t, err, "eet: sale needs a header and data")
 	_, err = signer.Sign(&Sale{Data: &Data{}})
 	assert.EqualError(t, err, "eet: sale needs a header and data")
+}
+
+func TestSignNeedsMessageUUID(t *testing.T) {
+	signer := newTestSigner(t)
+	_, err := signer.Sign(&Sale{Header: &Header{}, Data: &Data{}})
+	assert.EqualError(t, err, "eet: sale needs a message UUID")
 }
 
 func TestVerifyRejectsTampering(t *testing.T) {
@@ -285,19 +291,19 @@ func TestVerifyRejectsTampering(t *testing.T) {
 
 func TestNewSigner(t *testing.T) {
 	t.Run("RSA key matching the certificate", func(t *testing.T) {
-		key, cert := newTestCertificate(t, "CZ00000019")
+		key, cert := newTestCertificate(t)
 		signer, err := NewSigner(cert, key)
 		require.NoError(t, err)
 		assert.Equal(t, cert, signer.Certificate())
 	})
 	t.Run("key from another certificate", func(t *testing.T) {
-		_, cert := newTestCertificate(t, "CZ00000019")
-		other, _ := newTestCertificate(t, "CZ00000019")
+		_, cert := newTestCertificate(t)
+		other, _ := newTestCertificate(t)
 		_, err := NewSigner(cert, other)
 		assert.EqualError(t, err, "eet: private key does not match the certificate")
 	})
 	t.Run("non-RSA key", func(t *testing.T) {
-		_, cert := newTestCertificate(t, "CZ00000019")
+		_, cert := newTestCertificate(t)
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err)
 		_, err = NewSigner(cert, key)
@@ -308,7 +314,7 @@ func TestNewSigner(t *testing.T) {
 // The CA EET issues PKCS#12 files with the legacy encryption (RC2-40 or
 // 3DES) that OpenSSL 3 only opens with -legacy.
 func TestNewSignerFromPKCS12(t *testing.T) {
-	key, cert := newTestCertificate(t, "CZ00000019")
+	key, cert := newTestCertificate(t)
 	encoders := map[string]*pkcs12.Encoder{
 		"legacy RC2": pkcs12.LegacyRC2,
 		"legacy DES": pkcs12.LegacyDES,
@@ -359,9 +365,9 @@ func findElementIn(doc *etree.Document, namespace, tag string) *etree.Element {
 	return el
 }
 
-func newTestSigner(t *testing.T, commonName string) *Signer {
+func newTestSigner(t *testing.T) *Signer {
 	t.Helper()
-	key, cert := newTestCertificate(t, commonName)
+	key, cert := newTestCertificate(t)
 	signer, err := NewSigner(cert, key)
 	require.NoError(t, err)
 	return signer
@@ -369,13 +375,13 @@ func newTestSigner(t *testing.T, commonName string) *Signer {
 
 // newTestCertificate makes a throwaway self-signed certificate shaped like
 // the ones the CA EET issues: RSA 2048 and the merchant's tax ID as CN.
-func newTestCertificate(t *testing.T, commonName string) (*rsa.PrivateKey, *x509.Certificate) {
+func newTestCertificate(t *testing.T) (*rsa.PrivateKey, *x509.Certificate) {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: commonName, Country: []string{"CZ"}},
+		Subject:      pkix.Name{CommonName: "CZ00000019", Country: []string{"CZ"}},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(366 * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment,

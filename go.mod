@@ -12,5 +12,5 @@ require (
 require (
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.11.0 // indirect
+	golang.org/x/crypto v0.55.0 // indirect
 )
