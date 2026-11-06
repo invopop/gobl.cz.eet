@@ -102,7 +102,7 @@ var officialSamples = []struct {
 func TestVerifyOfficialSamples(t *testing.T) {
 	for _, sample := range officialSamples {
 		t.Run(sample.name, func(t *testing.T) {
-			cert, err := verifySignature(readSample(t, sample.name))
+			cert, _, err := verifySignature(readSample(t, sample.name))
 			require.NoError(t, err)
 			assert.Equal(t, sample.name, cert.Subject.CommonName)
 		})
@@ -132,14 +132,14 @@ func TestSignReproducesOfficialSamples(t *testing.T) {
 
 			signedInfo, err := canonicalize(findElement(t, ours, nsDSig, "SignedInfo"), signedInfoPrefixList)
 			require.NoError(t, err)
-			officialCert, err := verifySignature(official)
+			officialCert, _, err := verifySignature(official)
 			require.NoError(t, err)
 			officialValue, err := base64.StdEncoding.DecodeString(findElement(t, official, nsDSig, "SignatureValue").Text())
 			require.NoError(t, err)
 			digest := sha256.Sum256(signedInfo)
 			assert.NoError(t, rsa.VerifyPKCS1v15(officialCert.PublicKey.(*rsa.PublicKey), crypto.SHA256, digest[:], officialValue))
 
-			cert, err := verifySignature(ours)
+			cert, _, err := verifySignature(ours)
 			require.NoError(t, err)
 			assert.Equal(t, signer.Certificate(), cert)
 		})
@@ -283,7 +283,7 @@ func TestVerifyRejectsTampering(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			doc := readSample(t, "CZ00000019")
 			tt.tamper(doc)
-			_, err := verifySignature(doc)
+			_, _, err := verifySignature(doc)
 			assert.EqualError(t, err, tt.err)
 		})
 	}

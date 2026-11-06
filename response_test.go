@@ -165,6 +165,28 @@ func TestParseReadsTheSignedBody(t *testing.T) {
 	assert.EqualError(t, err, "eet: signature must reference the SOAP body")
 }
 
+// A namespace declaration named like an attribute is left out of the
+// canonical form, so the signature still holds, but a decoder matching
+// attributes by local name would take it for the attribute.
+func TestParseIgnoresUnsignedDeclarations(t *testing.T) {
+	confirmation := string(readResponse(t, "confirmation"))
+	tests := map[string]string{
+		"POK": strings.Replace(confirmation, `test="true"/>`,
+			`test="true" xmlns:pok="11111111-1111-4111-8111-111111111111-ff"/>`, 1),
+		"UUID": strings.Replace(confirmation, `dat_prij="2026-11-06T12:18:27+01:00"/>`,
+			`dat_prij="2026-11-06T12:18:27+01:00" xmlns:uuid_zpravy="22222222-2222-4222-8222-222222222222"/>`, 1),
+	}
+	for name, data := range tests {
+		t.Run(name, func(t *testing.T) {
+			require.NotEqual(t, confirmation, data)
+			res, err := ParseResponse([]byte(data), playgroundTrust())
+			require.NoError(t, err)
+			assert.Equal(t, "9765cced-b373-4a13-bbdc-986a62bc3544-ff", res.Confirmation.POK)
+			assert.Equal(t, "f1263599-5a52-495a-a9a9-4e1e3b3efeb4", res.Header.UUID)
+		})
+	}
+}
+
 func TestParseMalformedResponses(t *testing.T) {
 	tests := []struct {
 		name string

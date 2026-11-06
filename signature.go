@@ -48,71 +48,72 @@ const (
 )
 
 // verifySignature checks the WS-Security signature over the SOAP body of an
-// EET message and returns the certificate that made it, for the caller to
-// decide whether to trust it. Only what the service uses passes: one
+// EET message. It returns the certificate that made it, for the caller to
+// decide whether to trust it, and the canonical body the signature covers,
+// which is what a caller should read. Only what the service uses passes: one
 // reference to the body, exclusive canonicalization, SHA-256 and
 // RSA-SHA256, and the certificate in a BinarySecurityToken.
-func verifySignature(doc *etree.Document) (*x509.Certificate, error) {
+func verifySignature(doc *etree.Document) (*x509.Certificate, []byte, error) {
 	body := child(doc.Root(), nsSOAP, "Body")
 	if body == nil {
-		return nil, errors.New("eet: message has no SOAP body")
+		return nil, nil, errors.New("eet: message has no SOAP body")
 	}
 	security := child(child(doc.Root(), nsSOAP, "Header"), nsWSSE, "Security")
 	signature := child(security, nsDSig, "Signature")
 	if signature == nil {
-		return nil, errors.New("eet: message has no signature")
+		return nil, nil, errors.New("eet: message has no signature")
 	}
 	signedInfo := child(signature, nsDSig, "SignedInfo")
 	method := child(signedInfo, nsDSig, "CanonicalizationMethod")
 	if alg := algorithm(method); alg != algExcC14N {
-		return nil, fmt.Errorf("eet: unsupported canonicalization method %s", alg)
+		return nil, nil, fmt.Errorf("eet: unsupported canonicalization method %s", alg)
 	}
 	if alg := algorithm(child(signedInfo, nsDSig, "SignatureMethod")); alg != algRSASHA256 {
-		return nil, fmt.Errorf("eet: unsupported signature method %s", alg)
+		return nil, nil, fmt.Errorf("eet: unsupported signature method %s", alg)
 	}
 
 	reference := child(signedInfo, nsDSig, "Reference")
 	if id := wsuID(body); id == "" || attrValue(reference, "URI") != "#"+id {
-		return nil, errors.New("eet: signature must reference the SOAP body")
+		return nil, nil, errors.New("eet: signature must reference the SOAP body")
 	}
 	transforms := children(child(reference, nsDSig, "Transforms"))
 	if len(transforms) != 1 || algorithm(transforms[0]) != algExcC14N {
-		return nil, errors.New("eet: body must be transformed with exclusive canonicalization only")
+		return nil, nil, errors.New("eet: body must be transformed with exclusive canonicalization only")
 	}
 	if alg := algorithm(child(reference, nsDSig, "DigestMethod")); alg != algSHA256 {
-		return nil, fmt.Errorf("eet: unsupported digest method %s", alg)
+		return nil, nil, fmt.Errorf("eet: unsupported digest method %s", alg)
 	}
 	canonicalBody, err := canonicalize(body, prefixList(transforms[0]))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	digest := sha256.Sum256(canonicalBody)
 	expected, err := decodeBase64(text(child(reference, nsDSig, "DigestValue")))
 	if err != nil || !bytes.Equal(digest[:], expected) {
-		return nil, errors.New("eet: digest does not match the SOAP body")
+		return nil, nil, errors.New("eet: digest does not match the SOAP body")
 	}
 
 	cert, err := tokenCertificate(security, signature)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	public, ok := cert.PublicKey.(*rsa.PublicKey)
 	if !ok {
-		return nil, errors.New("eet: signing certificate must have an RSA key")
+		return nil, nil, errors.New("eet: signing certificate must have an RSA key")
 	}
 	canonicalSignedInfo, err := canonicalize(signedInfo, prefixList(method))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	value, err := decodeBase64(text(child(signature, nsDSig, "SignatureValue")))
 	if err != nil {
-		return nil, fmt.Errorf("eet: reading signature value: %w", err)
+		return nil, nil, fmt.Errorf("eet: reading signature value: %w", err)
 	}
 	hashed := sha256.Sum256(canonicalSignedInfo)
 	if err := rsa.VerifyPKCS1v15(public, crypto.SHA256, hashed[:], value); err != nil {
-		return nil, fmt.Errorf("eet: invalid signature: %w", err)
+		return nil, nil, fmt.Errorf("eet: invalid signature: %w", err)
 	}
-	return cert, nil
+	return cert, canonicalBody, nil
 }
 
 // tokenCertificate reads the certificate from the BinarySecurityToken that

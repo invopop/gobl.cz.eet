@@ -134,36 +134,45 @@ func ParseResponse(data []byte, trust *Trust) (*Response, error) {
 	if fault := child(body, nsSOAP, "Fault"); fault != nil {
 		return nil, fmt.Errorf("eet: SOAP fault %s: %s", text(child(fault, "", "faultcode")), text(child(fault, "", "faultstring")))
 	}
-	el := child(body, NamespaceEET, "Odpoved")
-	if el == nil {
+	answer := child(body, NamespaceEET, "Odpoved")
+	if answer == nil {
 		return nil, errors.New("eet: response has no Odpoved")
 	}
 
-	// Read the answer from the very body the signature covers, not from
-	// the whole envelope, where a second body could hide.
-	answer, err := detach(el)
-	if err != nil {
-		return nil, err
-	}
-	raw, err := answer.WriteToBytes()
-	if err != nil {
-		return nil, fmt.Errorf("eet: reading response: %w", err)
-	}
-	res := new(Response)
-	if err := xml.Unmarshal(raw, res); err != nil {
-		return nil, fmt.Errorf("eet: reading response: %w", err)
-	}
-
-	switch {
-	case res.Confirmation != nil:
-		cert, err := verifySignature(doc)
+	// Read the answer from the canonical body, the bytes a signature covers:
+	// not from the whole envelope, where a second body could hide, and
+	// without the namespace declarations canonicalization leaves out, which
+	// the decoder could take for attributes.
+	signed := child(answer, NamespaceEET, "Potvrzeni") != nil
+	var canonical []byte
+	if signed {
+		cert, verified, err := verifySignature(doc)
 		if err != nil {
 			return nil, err
 		}
 		if err := trust.check(cert); err != nil {
 			return nil, err
 		}
-	case res.Error == nil:
+		canonical = verified
+	} else {
+		var err error
+		if canonical, err = canonicalize(body, ""); err != nil {
+			return nil, err
+		}
+	}
+	var envelopeBody struct {
+		Response *Response `xml:"http://fs.gov.cz/eet/schema/v4 Odpoved"`
+	}
+	if err := xml.Unmarshal(canonical, &envelopeBody); err != nil {
+		return nil, fmt.Errorf("eet: reading response: %w", err)
+	}
+	res := envelopeBody.Response
+	switch {
+	case res == nil:
+		return nil, errors.New("eet: response has no Odpoved")
+	case res.Confirmation != nil && !signed:
+		return nil, errors.New("eet: confirmation is not signed")
+	case res.Confirmation == nil && res.Error == nil:
 		return nil, errors.New("eet: response has neither a confirmation nor an error")
 	}
 	return res, nil
