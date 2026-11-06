@@ -200,9 +200,21 @@ func TestNewSaleErrors(t *testing.T) {
 			err:    "eet: invoice must be calculated",
 		},
 		{
+			name:   "proforma",
+			change: func(inv *bill.Invoice) { inv.Type = bill.InvoiceTypeProforma },
+			err:    "eet: invoice type must be standard or credit-note",
+		},
+		{
 			name:   "no supplier tax ID",
 			change: func(inv *bill.Invoice) { inv.Supplier.TaxID = nil },
 			err:    "eet: invoice needs the supplier's tax ID",
+		},
+		{
+			name: "German supplier",
+			change: func(inv *bill.Invoice) {
+				inv.Supplier.TaxID = &tax.Identity{Country: "DE", Code: "111111125"}
+			},
+			err: "eet: supplier tax ID must be Czech",
 		},
 		{
 			name:   "no issue time",

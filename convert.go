@@ -10,6 +10,7 @@ import (
 	"github.com/invopop/gobl/bill"
 	"github.com/invopop/gobl/cal"
 	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/l10n"
 	"github.com/invopop/gobl/uuid"
 )
 
@@ -49,9 +50,10 @@ func WithVerification() Option {
 }
 
 // NewSale builds the EET data message for a sale recorded as a calculated
-// GOBL invoice with the cz-eet-v1 addon. Each call makes a new message,
-// with its own UUID and send time, so build one for every attempt, resends
-// included; the sale data stays the same across attempts.
+// GOBL invoice with the cz-eet-v1 addon. The invoice's issue date and time
+// are read as Czech local time. Each call makes a new message, with its own
+// UUID and send time, so build one for every attempt, resends included; the
+// sale data stays the same across attempts.
 func NewSale(inv *bill.Invoice, opts ...Option) (*Sale, error) {
 	o := options{
 		uuid: uuid.V4().String(),
@@ -86,8 +88,16 @@ func newData(inv *bill.Invoice) (*Data, error) {
 	if inv.Totals == nil {
 		return nil, errors.New("eet: invoice must be calculated")
 	}
+	// The addon rules catch these too; checked again here because the
+	// message would still build, misstating the sale.
+	if !inv.Type.In(bill.InvoiceTypeStandard, bill.InvoiceTypeCreditNote) {
+		return nil, errors.New("eet: invoice type must be standard or credit-note")
+	}
 	if inv.Supplier == nil || inv.Supplier.TaxID == nil || inv.Supplier.TaxID.Code == "" {
 		return nil, errors.New("eet: invoice needs the supplier's tax ID")
+	}
+	if inv.Supplier.TaxID.Country != l10n.TaxCountryCode(l10n.CZ) {
+		return nil, errors.New("eet: supplier tax ID must be Czech")
 	}
 	if inv.IssueTime == nil {
 		return nil, errors.New("eet: invoice needs an issue time")
