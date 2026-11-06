@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	_ "time/tzdata" // Prague's zone, also where the system has none
 
 	"github.com/invopop/gobl.cz.eet/addon"
 	"github.com/invopop/gobl/bill"
@@ -22,7 +23,9 @@ const (
 )
 
 // prague is the zone of EET times, and of the issue date and time of a
-// Czech invoice.
+// Czech invoice. The embedded time zone data means it always loads: a
+// missing zone would otherwise either stop the program or, falling back to
+// UTC as GOBL does, record every sale an hour or two off.
 var prague = mustLoadLocation("Europe/Prague")
 
 // Option adjusts the message built for a sale.
