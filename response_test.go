@@ -185,6 +185,12 @@ func TestParseIgnoresUnsignedDeclarations(t *testing.T) {
 			assert.Equal(t, "f1263599-5a52-495a-a9a9-4e1e3b3efeb4", res.Header.UUID)
 		})
 	}
+	t.Run("error code", func(t *testing.T) {
+		data := strings.Replace(string(readResponse(t, "error-schema")), `kod="3"`, `kod="3" xmlns:kod="0"`, 1)
+		res, err := ParseResponse([]byte(data), playgroundTrust())
+		require.NoError(t, err)
+		assert.Equal(t, ErrorCodeSchema, res.Error.Code)
+	})
 }
 
 func TestParseMalformedResponses(t *testing.T) {
