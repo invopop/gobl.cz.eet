@@ -144,15 +144,27 @@ func tokenCertificate(security, signature *etree.Element) (*x509.Certificate, er
 // namespaces its ancestors declare in scope and the given InclusiveNamespaces
 // prefix list.
 func canonicalize(el *etree.Element, prefixList string) ([]byte, error) {
+	doc, err := detach(el)
+	if err != nil {
+		return nil, err
+	}
+	return dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList(prefixList).Canonicalize(doc.Root())
+}
+
+// detach copies el into a document of its own, declaring on it the
+// namespaces its ancestors put in scope.
+func detach(el *etree.Element) (*etree.Document, error) {
 	ctx, err := etreeutils.NSBuildParentContext(el)
 	if err != nil {
-		return nil, fmt.Errorf("eet: canonicalizing %s: %w", el.Tag, err)
+		return nil, fmt.Errorf("eet: reading %s: %w", el.Tag, err)
 	}
 	detached, err := etreeutils.NSDetatch(ctx, el)
 	if err != nil {
-		return nil, fmt.Errorf("eet: canonicalizing %s: %w", el.Tag, err)
+		return nil, fmt.Errorf("eet: reading %s: %w", el.Tag, err)
 	}
-	return dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList(prefixList).Canonicalize(detached)
+	doc := etree.NewDocument()
+	doc.SetRoot(detached)
+	return doc, nil
 }
 
 // The helpers below take a nil element as an empty one, so reading a message
