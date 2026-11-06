@@ -23,7 +23,8 @@ var icaPublic []byte
 // those that chain up to one of the Roots, through the Intermediates when
 // needed, are valid at the time of the check, and name the Organization in
 // their subject. The common name is not checked: it differs between the
-// Playground and production and may change on renewal.
+// Playground and production and may change on renewal. Nor is revocation:
+// an app that needs it fetches and caches I.CA's revocation lists itself.
 type Trust struct {
 	Roots         *x509.CertPool
 	Intermediates *x509.CertPool

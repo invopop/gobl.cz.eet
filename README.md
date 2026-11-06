@@ -65,6 +65,11 @@ supplier tax ID, an issue time, both extensions, CZK or an exchange rate to
 CZK, a series and code that fit `porad_cis`, and a total within
 ±99,999,999.99 CZK. Full examples are in [`examples`](./examples).
 
+The issue date and time are the moment of the sale in **Czech local time**
+(Europe/Prague), which EET records with seconds. An issue time taken from a
+server clock in another zone records the sale at the wrong hour without any
+error.
+
 ## Sending a sale
 
 ```go
@@ -82,6 +87,8 @@ request, err := signer.Sign(sale)
 // and the eet.SOAPAction header, then read the answer:
 res, err := eet.ParseResponse(body, eet.DefaultTrust())
 switch {
+case res.Header == nil || res.Header.UUID != sale.Header.UUID:
+	// not the answer to this message: don't keep anything from it
 case res.Confirmation != nil:
 	// keep res.Confirmation.POK as the cz-eet-pok stamp
 case res.Error.Code.Retry():
@@ -97,7 +104,8 @@ so build one per attempt. `Data.SaleKey()` identifies the sale across attempts.
 
 `ParseResponse` only accepts a confirmation signed by a certificate the trust
 accepts. `DefaultTrust` is the I.CA chain described in [`ca`](./ca); build your
-own `Trust` to change the roots or the expected organisation.
+own `Trust` to change the roots or the expected organisation. Revocation is
+not checked: an app that needs it fetches I.CA's revocation lists itself.
 
 ## Development
 

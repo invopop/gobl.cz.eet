@@ -58,6 +58,9 @@ func newAddon() *tax.AddonDef {
 				sequence number and time, and the total paid in CZK. This addon adds the
 				unit and device extensions, the POK stamp, and the rules a simplified or
 				standard invoice must meet so that the message can be built from it.
+
+				The invoice's issue date and time are the moment of the sale in Czech
+				local time (Europe/Prague), which EET records with seconds.
 			`),
 		},
 		Sources: []*cbc.Source{
