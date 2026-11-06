@@ -83,8 +83,10 @@ signer, err := eet.NewSignerFromPKCS12(p12, password) // the merchant's CA EET c
 sale, err := eet.NewSale(inv)  // a calculated invoice with the cz-eet-v1 addon
 request, err := signer.Sign(sale)
 
-// POST the request over HTTP/1.1 with "Content-Type: text/xml; charset=utf-8"
-// and the eet.SOAPAction header, then read the answer:
+// POST the request over HTTP/1.1 with these headers, eet.SOAPAction quoted:
+//   Content-Type: text/xml; charset=utf-8
+//   SOAPAction: "http://fs.gov.cz/eet/OdeslaniTrzby"
+// then read the answer:
 res, err := eet.ParseResponse(body, eet.DefaultTrust())
 switch {
 case err != nil:
@@ -114,7 +116,7 @@ not checked: an app that needs it fetches I.CA's revocation lists itself.
 
 ```sh
 go test ./...          # the XSD checks need libxml2 (apt install libxml2-dev)
-go test ./... -update  # rewrite the golden files in examples/out
+go test . -update      # rewrite the golden files in examples/out
 ```
 
 The signer is tested against the three official signed sample requests in

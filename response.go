@@ -9,6 +9,7 @@ import (
 )
 
 // SOAPAction is the action of the service's one operation, OdeslaniTrzby.
+// SOAP 1.1 sends it in quotes: SOAPAction: "http://fs.gov.cz/eet/OdeslaniTrzby".
 const SOAPAction = "http://fs.gov.cz/eet/OdeslaniTrzby"
 
 // Response (Odpoved) is the service's answer to a sale message: a
