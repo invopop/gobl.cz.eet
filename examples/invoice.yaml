@@ -1,0 +1,52 @@
+$schema: "https://gobl.org/draft-0/bill/invoice"
+$regime: "CZ"
+$addons:
+  - "cz-eet-v1"
+$tags:
+  - "simplified"
+uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e57"
+series: "PRG"
+code: "000135"
+issue_date: "2027-01-09"
+issue_time: "16:45:36"
+currency: "CZK"
+
+tax:
+  prices_include: "VAT"
+  ext:
+    cz-eet-unit: "303"
+    cz-eet-device: "POS-1"
+
+supplier:
+  name: "Kavárna u Mostu s.r.o."
+  tax_id:
+    country: "CZ"
+    code: "12345679"
+  addresses:
+    - num: "12"
+      street: "Mostecká"
+      locality: "Praha"
+      code: "11800"
+      country: "CZ"
+
+lines:
+  - quantity: "2"
+    item:
+      name: "Cappuccino"
+      price: "75.00"
+    taxes:
+      - cat: VAT
+        rate: "standard"
+  - quantity: "1"
+    item:
+      name: "Croissant"
+      price: "55.00"
+    taxes:
+      - cat: VAT
+        rate: "reduced"
+
+payment:
+  advances:
+    - key: "cash"
+      description: "Paid in cash at the counter"
+      percent: "100%"

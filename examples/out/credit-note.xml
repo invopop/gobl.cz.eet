@@ -1,0 +1,4 @@
+<v4:Trzba xmlns:v4="http://fs.gov.cz/eet/schema/v4">
+  <v4:Hlavicka uuid_zpravy="8c1a7ad4-5f3e-4b2a-9d61-0e7f3c2b1a90" dat_odesl="2027-01-09T16:45:37+01:00" prvni_zaslani="true"/>
+  <v4:Data eic_popl="CZ12345679" id_jednotky="303" id_pokl="POS-1" porad_cis="PRG/000141" dat_trzby="2027-01-10T09:12:03+01:00" celk_trzba="-55.00"/>
+</v4:Trzba>
