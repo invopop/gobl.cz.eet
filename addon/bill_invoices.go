@@ -53,33 +53,44 @@ func billInvoiceRules() *rules.Set {
 		),
 		rules.Field("supplier",
 			rules.Field("tax_id",
-				rules.Assert("06", "supplier tax ID is required (EET eic_popl)", is.Present),
+				rules.Assert("06", "supplier tax ID with a code is required (EET eic_popl)",
+					is.Func("tax ID with a code", taxIDHasCode),
+				),
 				rules.Field("country",
 					rules.Assert("07", "supplier tax ID must be Czech (EET eic_popl)", is.In(l10n.TaxCountryCode(l10n.CZ))),
-				),
-				rules.Field("code",
-					rules.Assert("08", "supplier tax ID code is required (EET eic_popl)", is.Present),
 				),
 			),
 		),
 		rules.Field("tax",
-			rules.Assert("09", "tax is required for the EET unit and device extensions", is.Present),
 			rules.Field("ext",
-				rules.Assert("10", "tax extensions 'cz-eet-unit' and 'cz-eet-device' are required",
+				rules.Assert("08", "tax extensions 'cz-eet-unit' and 'cz-eet-device' are required",
 					tax.ExtensionsRequire(ExtKeyUnit, ExtKeyDevice),
 				),
-				rules.Assert("11", "tax extension 'cz-eet-unit' must be a number from 1 to 999999999 (EET id_jednotky)",
+				rules.Assert("09", "tax extension 'cz-eet-unit' must be a number from 1 to 999999999 (EET id_jednotky)",
 					tax.ExtensionHasValidCode(ExtKeyUnit),
 				),
-				rules.Assert("12", "tax extension 'cz-eet-device' must be 1 to 20 letters, digits, spaces or . , : ; / # - _ (EET id_pokl)",
+				rules.Assert("10", "tax extension 'cz-eet-device' must be 1 to 20 letters, digits, spaces or . , : ; / # - _ (EET id_pokl)",
 					tax.ExtensionHasValidCode(ExtKeyDevice),
 				),
 			),
 		),
-		rules.Assert("13", "payable total must be at most 99,999,999.99 CZK (EET celk_trzba)",
+		rules.Assert("11", "payable total must be at most 99,999,999.99 CZK (EET celk_trzba)",
 			is.Func("total fits", totalFits),
 		),
 	)
+}
+
+// normalizeInvoice prepares the tax object that holds the unit and device
+// extensions, so a missing one is reported as missing extensions.
+func normalizeInvoice(inv *bill.Invoice) {
+	if inv.Tax == nil {
+		inv.Tax = new(bill.Tax)
+	}
+}
+
+func taxIDHasCode(val any) bool {
+	id, ok := val.(*tax.Identity)
+	return ok && id != nil && id.Code != ""
 }
 
 // saleNumberFits leaves a missing code to rule 03.

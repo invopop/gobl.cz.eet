@@ -111,7 +111,7 @@ func TestInvoiceRules(t *testing.T) {
 		{
 			name:   "no supplier tax ID",
 			change: func(inv *bill.Invoice) { inv.Supplier.TaxID = nil },
-			err:    "[GOBL-CZ-EET-BILL-INVOICE-06] ($.supplier.tax_id) supplier tax ID is required",
+			err:    "[GOBL-CZ-EET-BILL-INVOICE-06] ($.supplier.tax_id) supplier tax ID with a code is required",
 		},
 		{
 			name: "German supplier",
@@ -123,40 +123,40 @@ func TestInvoiceRules(t *testing.T) {
 		{
 			name:   "supplier tax ID without code",
 			change: func(inv *bill.Invoice) { inv.Supplier.TaxID.Code = "" },
-			err:    "[GOBL-CZ-EET-BILL-INVOICE-08] ($.supplier.tax_id.code) supplier tax ID code is required",
+			err:    "[GOBL-CZ-EET-BILL-INVOICE-06] ($.supplier.tax_id) supplier tax ID with a code is required",
 		},
 		{
 			name:   "no tax",
 			change: func(inv *bill.Invoice) { inv.Tax = nil },
-			err:    "[GOBL-CZ-EET-BILL-INVOICE-09] ($.tax) tax is required for the EET unit and device extensions",
+			err:    "[GOBL-CZ-EET-BILL-INVOICE-08] ($.tax.ext) tax extensions 'cz-eet-unit' and 'cz-eet-device' are required",
 		},
 		{
 			name: "no device",
 			change: func(inv *bill.Invoice) {
 				inv.Tax.Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyUnit: "303"})
 			},
-			err: "[GOBL-CZ-EET-BILL-INVOICE-10] ($.tax.ext) tax extensions 'cz-eet-unit' and 'cz-eet-device' are required",
+			err: "[GOBL-CZ-EET-BILL-INVOICE-08] ($.tax.ext) tax extensions 'cz-eet-unit' and 'cz-eet-device' are required",
 		},
 		{
 			name: "unit with a leading zero",
 			change: func(inv *bill.Invoice) {
 				inv.Tax.Ext = inv.Tax.Ext.Set(addon.ExtKeyUnit, "0303")
 			},
-			err: "[GOBL-CZ-EET-BILL-INVOICE-11] ($.tax.ext) tax extension 'cz-eet-unit' must be a number from 1 to 999999999",
+			err: "[GOBL-CZ-EET-BILL-INVOICE-09] ($.tax.ext) tax extension 'cz-eet-unit' must be a number from 1 to 999999999",
 		},
 		{
 			name: "device with an accented letter",
 			change: func(inv *bill.Invoice) {
 				inv.Tax.Ext = inv.Tax.Ext.Set(addon.ExtKeyDevice, "POKLADNA-Č1")
 			},
-			err: "[GOBL-CZ-EET-BILL-INVOICE-12] ($.tax.ext) tax extension 'cz-eet-device' must be 1 to 20 letters",
+			err: "[GOBL-CZ-EET-BILL-INVOICE-10] ($.tax.ext) tax extension 'cz-eet-device' must be 1 to 20 letters",
 		},
 		{
 			name: "total over the EET limit",
 			change: func(inv *bill.Invoice) {
 				inv.Lines[0].Item.Price = num.NewAmount(8264462810, 2)
 			},
-			err: "[GOBL-CZ-EET-BILL-INVOICE-13] payable total must be at most 99,999,999.99 CZK",
+			err: "[GOBL-CZ-EET-BILL-INVOICE-11] payable total must be at most 99,999,999.99 CZK",
 		},
 		{
 			name: "total over the EET limit once converted to CZK",
@@ -167,7 +167,7 @@ func TestInvoiceRules(t *testing.T) {
 				}
 				inv.Lines[0].Item.Price = num.NewAmount(330000000, 2)
 			},
-			err: "[GOBL-CZ-EET-BILL-INVOICE-13] payable total must be at most 99,999,999.99 CZK",
+			err: "[GOBL-CZ-EET-BILL-INVOICE-11] payable total must be at most 99,999,999.99 CZK",
 		},
 	}
 	for _, tt := range tests {

@@ -8,6 +8,7 @@ import (
 	"github.com/invopop/gobl/cal"
 	"github.com/invopop/gobl/cbc"
 	"github.com/invopop/gobl/i18n"
+	"github.com/invopop/gobl/norm"
 	"github.com/invopop/gobl/pkg/here"
 	"github.com/invopop/gobl/rules"
 	"github.com/invopop/gobl/rules/is"
@@ -31,6 +32,10 @@ func init() {
 		rules.GOBL.Add("CZ-EET"),
 		is.InContext(tax.AddonIn(V1)),
 		billInvoiceRules(),
+	)
+	norm.RegisterWithGuard(
+		is.InContext(tax.AddonIn(V1)),
+		norm.For(normalizeInvoice),
 	)
 }
 
