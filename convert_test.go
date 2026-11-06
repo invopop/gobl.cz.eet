@@ -79,6 +79,49 @@ func TestNewSaleData(t *testing.T) {
 			},
 		},
 		{
+			// 02:30 happens twice that night: the first time, in summer time,
+			// is the one every attempt sends.
+			name: "hour repeated when summer time ends",
+			change: func(inv *bill.Invoice) {
+				inv.IssueDate = cal.MakeDate(2027, 10, 31)
+				inv.IssueTime = cal.NewTime(2, 30, 0)
+			},
+			check: func(t *testing.T, data *Data) {
+				assert.Equal(t, "2027-10-31T02:30:00+02:00", data.SoldAt)
+			},
+		},
+		{
+			name: "last second of the repeated hour",
+			change: func(inv *bill.Invoice) {
+				inv.IssueDate = cal.MakeDate(2027, 10, 31)
+				inv.IssueTime = cal.NewTime(2, 59, 59)
+			},
+			check: func(t *testing.T, data *Data) {
+				assert.Equal(t, "2027-10-31T02:59:59+02:00", data.SoldAt)
+			},
+		},
+		{
+			name: "after the repeated hour",
+			change: func(inv *bill.Invoice) {
+				inv.IssueDate = cal.MakeDate(2027, 10, 31)
+				inv.IssueTime = cal.NewTime(3, 0, 0)
+			},
+			check: func(t *testing.T, data *Data) {
+				assert.Equal(t, "2027-10-31T03:00:00+01:00", data.SoldAt)
+			},
+		},
+		{
+			// 02:30 never happens that night: clocks go from 02:00 to 03:00.
+			name: "hour skipped when summer time starts",
+			change: func(inv *bill.Invoice) {
+				inv.IssueDate = cal.MakeDate(2027, 3, 28)
+				inv.IssueTime = cal.NewTime(2, 30, 0)
+			},
+			check: func(t *testing.T, data *Data) {
+				assert.Equal(t, "2027-03-28T03:30:00+02:00", data.SoldAt)
+			},
+		},
+		{
 			name:   "no series",
 			change: func(inv *bill.Invoice) { inv.Series = "" },
 			check: func(t *testing.T, data *Data) {

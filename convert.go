@@ -15,8 +15,11 @@ import (
 )
 
 // timeFormat is the schema's dateTime mask: seconds, no fractions, and the
-// zone offset.
-const timeFormat = "2006-01-02T15:04:05Z07:00"
+// zone offset. wallClock is the same without the offset.
+const (
+	timeFormat = "2006-01-02T15:04:05Z07:00"
+	wallClock  = "2006-01-02T15:04:05"
+)
 
 // prague is the zone of EET times, and of the issue date and time of a
 // Czech invoice.
@@ -121,10 +124,18 @@ func newData(inv *bill.Invoice) (*Data, error) {
 	}, nil
 }
 
-// soldAt reads the issue date and time as Czech local time.
+// soldAt reads the issue date and time as Czech local time. The issue time
+// has no offset, so like RFC 5545 (3.3.5) the hour that repeats when summer
+// time ends is read as its first occurrence, and a time skipped when it
+// starts with the offset before the gap, an hour later on the clock. Every
+// attempt then sends the same sale time.
 func soldAt(inv *bill.Invoice) time.Time {
 	d, t := inv.IssueDate, inv.IssueTime
-	return cal.MakeDateTime(d.Year, d.Month, d.Day, t.Hour, t.Minute, t.Second).In(prague)
+	at := cal.MakeDateTime(d.Year, d.Month, d.Day, t.Hour, t.Minute, t.Second).In(prague)
+	if earlier := at.Add(-time.Hour); earlier.Format(wallClock) == at.Format(wallClock) {
+		return earlier
+	}
+	return at
 }
 
 // saleTotal is the amount payable in CZK with two decimals, negative for a
