@@ -210,8 +210,17 @@ func ParseResponse(data []byte, trust *Trust) (*Response, error) {
 		return nil, errors.New("eet: response has no Odpoved")
 	case res.Confirmation != nil && !signed:
 		return nil, errors.New("eet: confirmation is not signed")
+	case res.Confirmation != nil && res.Confirmation.Test != trust.Playground:
+		return nil, fmt.Errorf("eet: confirmation from %s, expected %s", environment(res.Confirmation.Test), environment(trust.Playground))
 	case res.Confirmation == nil && res.Error == nil:
 		return nil, errors.New("eet: response has neither a confirmation nor an error")
 	}
 	return res, nil
+}
+
+func environment(test bool) string {
+	if test {
+		return "the Playground"
+	}
+	return "production"
 }

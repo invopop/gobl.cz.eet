@@ -133,6 +133,15 @@ func TestParseRejectsUntrustedConfirmations(t *testing.T) {
 			trust: func() *Trust { return &Trust{Organization: OrganizationGFR} },
 			err:   "eet: no trusted roots to check the response against",
 		},
+		{
+			name: "Playground reply in production",
+			trust: func() *Trust {
+				tr := playgroundTrust()
+				tr.Playground = false
+				return tr
+			},
+			err: "eet: confirmation from the Playground, expected production",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -298,13 +307,16 @@ func TestDefaultTrustCertificates(t *testing.T) {
 	}
 	tr := DefaultTrust()
 	assert.Equal(t, OrganizationGFR, tr.Organization)
+	assert.False(t, tr.Playground)
 	assert.Nil(t, tr.now)
 }
 
-// playgroundTrust checks certificates on the day the fixtures were made,
-// so that the tests outlive the Playground certificate.
+// playgroundTrust accepts the Playground's confirmations, checking
+// certificates on the day the fixtures were made so that the tests outlive
+// the Playground certificate.
 func playgroundTrust() *Trust {
 	tr := DefaultTrust()
+	tr.Playground = true
 	tr.now = func() time.Time { return time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC) }
 	return tr
 }

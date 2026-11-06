@@ -108,9 +108,11 @@ so build one per attempt. `Data.SaleKey()` identifies the sale across attempts.
 `WithVerification()` asks the service to check a message without recording it.
 
 `ParseResponse` only accepts a confirmation signed by a certificate the trust
-accepts. `DefaultTrust` is the I.CA chain described in [`ca`](./ca); build your
-own `Trust` to change the roots or the expected organisation. Revocation is
-not checked: an app that needs it fetches I.CA's revocation lists itself.
+accepts. `DefaultTrust` is the I.CA chain described in [`ca`](./ca) and accepts
+production confirmations only; set its `Playground` field when sending to the
+Playground, whose replies are signed under the same chain. Build your own
+`Trust` to change the roots or the expected organisation. Revocation is not
+checked: an app that needs it fetches I.CA's revocation lists itself.
 
 ## Development
 

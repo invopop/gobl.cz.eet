@@ -30,6 +30,12 @@ type Trust struct {
 	Intermediates *x509.CertPool
 	Organization  string
 
+	// Playground accepts only the Playground's test confirmations (test
+	// true) instead of production ones. Both environments sign with the
+	// same chain and organisation, so this is what keeps a test POK off a
+	// real sale.
+	Playground bool
+
 	// now is when to check validity, the clock when nil.
 	now func() time.Time
 }
@@ -37,7 +43,9 @@ type Trust struct {
 // DefaultTrust trusts the Financial Administration's certificates issued by
 // I.CA Public CA/RSA 06/2022 under I.CA Root CA/RSA 05/2022, the chain that
 // signs the Playground's confirmations and that the operations documents
-// name for production. The ca directory has the certificates' sources.
+// name for production. It accepts production confirmations only: set
+// Playground to work against the Playground. The ca directory has the
+// certificates' sources.
 func DefaultTrust() *Trust {
 	roots := x509.NewCertPool()
 	roots.AppendCertsFromPEM(icaRoot)
