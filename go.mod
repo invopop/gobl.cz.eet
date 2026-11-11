@@ -31,7 +31,7 @@ require (
 )
 
 require (
-	github.com/invopop/gobl v0.511.2-0.20261106101416-7bfc167252cb
+	github.com/invopop/gobl v0.512.0
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
