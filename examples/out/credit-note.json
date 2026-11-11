@@ -1,0 +1,115 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "c35e1cdda94d6c75b3927e71ddd6491a82c452179be3aca4c5784be6c63e1f54"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/invoice",
+		"$regime": "CZ",
+		"$addons": [
+			"cz-eet-v1"
+		],
+		"$tags": [
+			"simplified"
+		],
+		"uuid": "019a5d31-8e2f-7b4c-a1d0-5c7e9f3b2a68",
+		"type": "credit-note",
+		"series": "PRG",
+		"code": "000141",
+		"issue_date": "2027-01-10",
+		"issue_time": "09:12:03",
+		"currency": "CZK",
+		"preceding": [
+			{
+				"issue_date": "2027-01-09",
+				"series": "PRG",
+				"code": "000135",
+				"reason": "Croissant returned"
+			}
+		],
+		"tax": {
+			"prices_include": "VAT",
+			"ext": {
+				"cz-eet-device": "POS-1",
+				"cz-eet-unit": "303"
+			}
+		},
+		"supplier": {
+			"name": "Kavárna u Mostu s.r.o.",
+			"tax_id": {
+				"country": "CZ",
+				"code": "12345679"
+			},
+			"addresses": [
+				{
+					"num": "12",
+					"street": "Mostecká",
+					"locality": "Praha",
+					"code": "11800",
+					"country": "CZ"
+				}
+			]
+		},
+		"lines": [
+			{
+				"i": 1,
+				"quantity": "1",
+				"item": {
+					"name": "Croissant",
+					"price": "55.00"
+				},
+				"sum": "55.00",
+				"taxes": [
+					{
+						"cat": "VAT",
+						"key": "standard",
+						"rate": "reduced",
+						"percent": "12.0%"
+					}
+				],
+				"total": "55.00"
+			}
+		],
+		"payment": {
+			"advances": [
+				{
+					"key": "cash",
+					"description": "Refunded in cash at the counter",
+					"percent": "100%",
+					"amount": "55.00"
+				}
+			]
+		},
+		"totals": {
+			"sum": "55.00",
+			"tax_included": "5.89",
+			"total": "49.11",
+			"taxes": {
+				"categories": [
+					{
+						"code": "VAT",
+						"rates": [
+							{
+								"key": "standard",
+								"base": "49.11",
+								"percent": "12.0%",
+								"amount": "5.89"
+							}
+						],
+						"amount": "5.89"
+					}
+				],
+				"sum": "5.89"
+			},
+			"tax": "5.89",
+			"total_with_tax": "55.00",
+			"payable": "55.00",
+			"advance": "55.00",
+			"due": "0.00"
+		}
+	}
+}

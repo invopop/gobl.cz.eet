@@ -1,0 +1,25 @@
+name: Lint
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+jobs:
+  lint:
+    name: golangci-lint
+    # lestrrat-go/libxml2 doesn't build against the newer libxml2 of Ubuntu 26.04.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
