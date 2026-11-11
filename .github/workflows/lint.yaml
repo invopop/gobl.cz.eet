@@ -9,7 +9,8 @@ on:
 jobs:
   lint:
     name: golangci-lint
-    runs-on: ubuntu-latest
+    # lestrrat-go/libxml2 doesn't build against the newer libxml2 of Ubuntu 26.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Check out code
