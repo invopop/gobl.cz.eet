@@ -172,149 +172,164 @@ func TestSignNeedsMessageUUID(t *testing.T) {
 	assert.EqualError(t, err, "eet: sale needs a message UUID")
 }
 
+// tamperings change an official sample request in ways the verifier must
+// refuse. profileOnly marks those only our WS-Security profile judges, such as
+// where the certificate travels or a duplicate element, rather than the
+// signature itself.
+var tamperings = []struct {
+	name        string
+	tamper      func(doc *etree.Document)
+	err         string
+	profileOnly bool
+}{
+	{
+		name: "body",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, NamespaceEET, "Data").CreateAttr("celk_trzba", "188580.01")
+		},
+		err: "eet: digest does not match the SOAP body",
+	},
+	{
+		name: "digest value",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "DigestValue").SetText("1O9rNvq2RoP0UbJuNUcEDaPvwvnH3HKRp7aVc2lb6r0=")
+		},
+		err: "eet: digest does not match the SOAP body",
+	},
+	{
+		name: "signature value",
+		tamper: func(doc *etree.Document) {
+			value := findElementIn(doc, nsDSig, "SignatureValue")
+			value.SetText("A" + value.Text()[1:])
+		},
+		err: "eet: invalid signature: crypto/rsa: verification error",
+	},
+	{
+		name: "reference to another element",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "Reference").CreateAttr("URI", "#X509-73E2DBECC9F62C5AB8177998819768121")
+		},
+		err: "eet: signature must reference the SOAP body",
+	},
+	{
+		name: "signature method",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "SignatureMethod").CreateAttr("Algorithm", "http://www.w3.org/2000/09/xmldsig#rsa-sha1")
+		},
+		err: "eet: unsupported signature method http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+	},
+	{
+		name: "digest method",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "DigestMethod").CreateAttr("Algorithm", "http://www.w3.org/2000/09/xmldsig#sha1")
+		},
+		err: "eet: unsupported digest method http://www.w3.org/2000/09/xmldsig#sha1",
+	},
+	{
+		name: "canonicalization method",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "CanonicalizationMethod").CreateAttr("Algorithm", "http://www.w3.org/TR/2001/REC-xml-c14n-20010315")
+		},
+		err: "eet: unsupported canonicalization method http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+	},
+	{
+		name: "missing signature",
+		tamper: func(doc *etree.Document) {
+			security := findElementIn(doc, nsWSSE, "Security")
+			security.RemoveChild(findElementIn(doc, nsDSig, "Signature"))
+		},
+		err:         "eet: message has no signature",
+		profileOnly: true,
+	},
+	{
+		name: "missing body",
+		tamper: func(doc *etree.Document) {
+			doc.Root().RemoveChild(findElementIn(doc, nsSOAP, "Body"))
+		},
+		err: "eet: message has no SOAP body",
+	},
+	{
+		name: "missing reference",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "SignedInfo").RemoveChild(findElementIn(doc, nsDSig, "Reference"))
+		},
+		err: "eet: signature must reference the SOAP body",
+	},
+	{
+		name: "extra transform",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "Transforms").CreateElement("ds:Transform").CreateAttr("Algorithm", "http://www.w3.org/2000/09/xmldsig#enveloped-signature")
+		},
+		err: "eet: body must be transformed with exclusive canonicalization only",
+	},
+	{
+		name: "token reference to nothing",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsWSSE, "Reference").CreateAttr("URI", "#X509-unknown")
+		},
+		err:         "eet: signing certificate not found",
+		profileOnly: true,
+	},
+	{
+		name: "token that isn't a certificate",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsWSSE, "BinarySecurityToken").CreateAttr("ValueType", "http://docs.oasis-open.org/wss/oasis-wss-kerberos-token-profile-1.1#GSS_Kerberosv5_AP_REQ")
+		},
+		err:         "eet: security token must be an X.509 certificate",
+		profileOnly: true,
+	},
+	{
+		name: "token that isn't base64",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsWSSE, "BinarySecurityToken").SetText("!!!")
+		},
+		err:         "eet: reading security token: illegal base64 data at input byte 0",
+		profileOnly: true,
+	},
+	{
+		name: "second body",
+		tamper: func(doc *etree.Document) {
+			doc.Root().AddChild(findElementIn(doc, nsSOAP, "Body").Copy())
+		},
+		err:         "eet: message has more than one Body",
+		profileOnly: true,
+	},
+	{
+		name: "second header",
+		tamper: func(doc *etree.Document) {
+			doc.Root().AddChild(findElementIn(doc, nsSOAP, "Header").Copy())
+		},
+		err:         "eet: message has more than one Header",
+		profileOnly: true,
+	},
+	{
+		name: "second security header",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsSOAP, "Header").AddChild(findElementIn(doc, nsWSSE, "Security").Copy())
+		},
+		err:         "eet: message has more than one Security",
+		profileOnly: true,
+	},
+	{
+		name: "second signature",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsWSSE, "Security").AddChild(findElementIn(doc, nsDSig, "Signature").Copy())
+		},
+		err:         "eet: message has more than one Signature",
+		profileOnly: true,
+	},
+	{
+		name: "second reference",
+		tamper: func(doc *etree.Document) {
+			findElementIn(doc, nsDSig, "SignedInfo").AddChild(findElementIn(doc, nsDSig, "Reference").Copy())
+		},
+		err:         "eet: message has more than one Reference",
+		profileOnly: true,
+	},
+}
+
 func TestVerifyRejectsTampering(t *testing.T) {
-	tests := []struct {
-		name   string
-		tamper func(doc *etree.Document)
-		err    string
-	}{
-		{
-			name: "body",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, NamespaceEET, "Data").CreateAttr("celk_trzba", "188580.01")
-			},
-			err: "eet: digest does not match the SOAP body",
-		},
-		{
-			name: "digest value",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "DigestValue").SetText("1O9rNvq2RoP0UbJuNUcEDaPvwvnH3HKRp7aVc2lb6r0=")
-			},
-			err: "eet: digest does not match the SOAP body",
-		},
-		{
-			name: "signature value",
-			tamper: func(doc *etree.Document) {
-				value := findElementIn(doc, nsDSig, "SignatureValue")
-				value.SetText("A" + value.Text()[1:])
-			},
-			err: "eet: invalid signature: crypto/rsa: verification error",
-		},
-		{
-			name: "reference to another element",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "Reference").CreateAttr("URI", "#X509-73E2DBECC9F62C5AB8177998819768121")
-			},
-			err: "eet: signature must reference the SOAP body",
-		},
-		{
-			name: "signature method",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "SignatureMethod").CreateAttr("Algorithm", "http://www.w3.org/2000/09/xmldsig#rsa-sha1")
-			},
-			err: "eet: unsupported signature method http://www.w3.org/2000/09/xmldsig#rsa-sha1",
-		},
-		{
-			name: "digest method",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "DigestMethod").CreateAttr("Algorithm", "http://www.w3.org/2000/09/xmldsig#sha1")
-			},
-			err: "eet: unsupported digest method http://www.w3.org/2000/09/xmldsig#sha1",
-		},
-		{
-			name: "canonicalization method",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "CanonicalizationMethod").CreateAttr("Algorithm", "http://www.w3.org/TR/2001/REC-xml-c14n-20010315")
-			},
-			err: "eet: unsupported canonicalization method http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
-		},
-		{
-			name: "missing signature",
-			tamper: func(doc *etree.Document) {
-				security := findElementIn(doc, nsWSSE, "Security")
-				security.RemoveChild(findElementIn(doc, nsDSig, "Signature"))
-			},
-			err: "eet: message has no signature",
-		},
-		{
-			name: "missing body",
-			tamper: func(doc *etree.Document) {
-				doc.Root().RemoveChild(findElementIn(doc, nsSOAP, "Body"))
-			},
-			err: "eet: message has no SOAP body",
-		},
-		{
-			name: "missing reference",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "SignedInfo").RemoveChild(findElementIn(doc, nsDSig, "Reference"))
-			},
-			err: "eet: signature must reference the SOAP body",
-		},
-		{
-			name: "extra transform",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "Transforms").CreateElement("ds:Transform").CreateAttr("Algorithm", "http://www.w3.org/2000/09/xmldsig#enveloped-signature")
-			},
-			err: "eet: body must be transformed with exclusive canonicalization only",
-		},
-		{
-			name: "token reference to nothing",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsWSSE, "Reference").CreateAttr("URI", "#X509-unknown")
-			},
-			err: "eet: signing certificate not found",
-		},
-		{
-			name: "token that isn't a certificate",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsWSSE, "BinarySecurityToken").CreateAttr("ValueType", "http://docs.oasis-open.org/wss/oasis-wss-kerberos-token-profile-1.1#GSS_Kerberosv5_AP_REQ")
-			},
-			err: "eet: security token must be an X.509 certificate",
-		},
-		{
-			name: "token that isn't base64",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsWSSE, "BinarySecurityToken").SetText("!!!")
-			},
-			err: "eet: reading security token: illegal base64 data at input byte 0",
-		},
-		{
-			name: "second body",
-			tamper: func(doc *etree.Document) {
-				doc.Root().AddChild(findElementIn(doc, nsSOAP, "Body").Copy())
-			},
-			err: "eet: message has more than one Body",
-		},
-		{
-			name: "second header",
-			tamper: func(doc *etree.Document) {
-				doc.Root().AddChild(findElementIn(doc, nsSOAP, "Header").Copy())
-			},
-			err: "eet: message has more than one Header",
-		},
-		{
-			name: "second security header",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsSOAP, "Header").AddChild(findElementIn(doc, nsWSSE, "Security").Copy())
-			},
-			err: "eet: message has more than one Security",
-		},
-		{
-			name: "second signature",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsWSSE, "Security").AddChild(findElementIn(doc, nsDSig, "Signature").Copy())
-			},
-			err: "eet: message has more than one Signature",
-		},
-		{
-			name: "second reference",
-			tamper: func(doc *etree.Document) {
-				findElementIn(doc, nsDSig, "SignedInfo").AddChild(findElementIn(doc, nsDSig, "Reference").Copy())
-			},
-			err: "eet: message has more than one Reference",
-		},
-	}
-	for _, tt := range tests {
+	for _, tt := range tamperings {
 		t.Run(tt.name, func(t *testing.T) {
 			doc := readSample(t, "CZ00000019")
 			tt.tamper(doc)
