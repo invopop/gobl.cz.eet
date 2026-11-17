@@ -87,13 +87,12 @@ request, err := signer.Sign(sale)
 //   Content-Type: text/xml; charset=utf-8
 //   SOAPAction: "http://fs.gov.cz/eet/OdeslaniTrzby"
 // then read the answer:
-res, err := eet.ParseResponse(body, eet.DefaultTrust())
+res, err := eet.ParseResponse(body, sale, eet.DefaultTrust())
 switch {
 case err != nil:
-	// a SOAP fault, an unreadable answer, or a confirmation that isn't
-	// genuine: nothing to keep, send again later
-case res.Header == nil || res.Header.UUID != sale.Header.UUID:
-	// not the answer to this message: don't keep anything from it
+	// a SOAP fault, an unreadable answer, a confirmation that isn't genuine,
+	// or the answer to another message (eet.ErrWrongMessage): nothing to
+	// keep, send again later
 case res.Confirmation != nil:
 	// keep res.Confirmation.POK as the cz-eet-pok stamp
 case res.Error.Code.Retry():
@@ -108,7 +107,7 @@ so build one per attempt. `Data.SaleKey()` identifies the sale across attempts.
 `WithVerification()` asks the service to check a message without recording it.
 
 `ParseResponse` only accepts a confirmation signed by a certificate the trust
-accepts. `DefaultTrust` is the I.CA chain described in [`ca`](./ca) and accepts
+accepts, for the very message it is given. `DefaultTrust` is the I.CA chain described in [`ca`](./ca) and accepts
 production confirmations only; set its `Playground` field when sending to the
 Playground, whose replies are signed under the same chain. Build your own
 `Trust` to change the roots or the expected organisation. Revocation is not

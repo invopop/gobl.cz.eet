@@ -5,9 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/beevik/etree"
 )
+
+// ErrWrongMessage says the response answers another message than the sale
+// it was read for, as a replayed or crossed answer would. Treat it like no
+// answer at all: the sale is not confirmed, send it again.
+var ErrWrongMessage = errors.New("eet: response answers another message")
 
 // SOAPAction is the action of the service's one operation, OdeslaniTrzby.
 // SOAP 1.1 sends it in quotes: SOAPAction: "http://fs.gov.cz/eet/OdeslaniTrzby".
@@ -158,12 +164,16 @@ const (
 	WarningCodeSelfDelegation WarningCode = 7
 )
 
-// ParseResponse reads the service's SOAP response to a sale. A confirmation
-// must be signed by a certificate the trust accepts, or ParseResponse fails:
-// the POK is only worth keeping when it's genuine. Errors come unsigned, as
-// the service sends them. Checking that the response answers the message
-// sent, by Header.UUID, is up to the caller.
-func ParseResponse(data []byte, trust *Trust) (*Response, error) {
+// ParseResponse reads the service's SOAP response to the sale message sent.
+// A confirmation must be signed by a certificate the trust accepts and answer
+// that very message, or ParseResponse fails: the POK is only worth keeping
+// when it's genuine and for this sale. Errors come unsigned, as the service
+// sends them, and may leave out the UUID of the message they answer. A
+// response to another message fails with ErrWrongMessage.
+func ParseResponse(data []byte, sale *Sale, trust *Trust) (*Response, error) {
+	if sale == nil || sale.Header == nil || sale.Header.UUID == "" {
+		return nil, errors.New("eet: a sale message with a UUID is needed to match the response")
+	}
 	doc := etree.NewDocument()
 	if err := doc.ReadFromBytes(data); err != nil {
 		return nil, fmt.Errorf("eet: reading response: %w", err)
@@ -215,7 +225,27 @@ func ParseResponse(data []byte, trust *Trust) (*Response, error) {
 	case res.Confirmation == nil && res.Error == nil:
 		return nil, errors.New("eet: response has neither a confirmation nor an error")
 	}
+	if err := answers(res, sale.Header.UUID); err != nil {
+		return nil, err
+	}
 	return res, nil
+}
+
+// answers checks that the response is for the message with the UUID given.
+// UUIDs are hexadecimal, so letter case doesn't count.
+func answers(res *Response, uuid string) error {
+	var answered string
+	if res.Header != nil {
+		answered = res.Header.UUID
+	}
+	switch {
+	case strings.EqualFold(answered, uuid):
+		return nil
+	case answered == "" && res.Confirmation == nil:
+		// An error may leave out the UUID (interface description, 3.5.2).
+		return nil
+	}
+	return fmt.Errorf("%w: answers %q, sent %q", ErrWrongMessage, answered, uuid)
 }
 
 func environment(test bool) string {

@@ -19,7 +19,7 @@ import (
 // signed with its CZ00000019 test certificate, on 6 November 2026.
 
 func TestParseConfirmation(t *testing.T) {
-	res, err := ParseResponse(readResponse(t, "confirmation"), playgroundTrust())
+	res, err := ParseResponse(readResponse(t, "confirmation"), sent(confirmationUUID), playgroundTrust())
 	require.NoError(t, err)
 	assert.Equal(t, &Response{
 		Header: &ResponseHeader{
@@ -34,7 +34,7 @@ func TestParseConfirmation(t *testing.T) {
 }
 
 func TestParseConfirmationWithWarning(t *testing.T) {
-	res, err := ParseResponse(readResponse(t, "warning-unit"), playgroundTrust())
+	res, err := ParseResponse(readResponse(t, "warning-unit"), sent("02f17749-1aff-4556-b485-fb87959ee350"), playgroundTrust())
 	require.NoError(t, err)
 	assert.Equal(t, "6ccd7f8f-6868-4882-b5ca-986a62bc6fce-ff", res.Confirmation.POK)
 	assert.Equal(t, []*Warning{
@@ -71,7 +71,7 @@ func TestParseErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := ParseResponse(readResponse(t, tt.name), playgroundTrust())
+			res, err := ParseResponse(readResponse(t, tt.name), sent(tt.uuid), playgroundTrust())
 			require.NoError(t, err)
 			assert.Nil(t, res.Confirmation)
 			assert.Equal(t, tt.err, res.Error)
@@ -152,7 +152,7 @@ func TestParseRejectsUntrustedConfirmations(t *testing.T) {
 			if tt.trust != nil {
 				trust = tt.trust()
 			}
-			_, err := ParseResponse([]byte(data), trust)
+			_, err := ParseResponse([]byte(data), sent(confirmationUUID), trust)
 			assert.ErrorContains(t, err, tt.err)
 		})
 	}
@@ -166,13 +166,46 @@ func TestParseReadsTheSignedBody(t *testing.T) {
 		`<eet:Potvrzeni pok="11111111-1111-4111-8111-111111111111-ff"/></eet:Odpoved></soapenv:Body>`
 
 	after := strings.Replace(confirmation, "</soapenv:Body>", "</soapenv:Body>"+forged, 1)
-	res, err := ParseResponse([]byte(after), playgroundTrust())
+	res, err := ParseResponse([]byte(after), sent(confirmationUUID), playgroundTrust())
 	require.NoError(t, err)
 	assert.Equal(t, "9765cced-b373-4a13-bbdc-986a62bc3544-ff", res.Confirmation.POK)
 
 	before := strings.Replace(confirmation, "<soapenv:Body ", forged+"<soapenv:Body ", 1)
-	_, err = ParseResponse([]byte(before), playgroundTrust())
+	_, err = ParseResponse([]byte(before), sent(confirmationUUID), playgroundTrust())
 	assert.EqualError(t, err, "eet: signature must reference the SOAP body")
+}
+
+// A genuine reply to another message, a replay or a crossed answer, must not
+// confirm this sale.
+func TestParseAnswerToAnotherMessage(t *testing.T) {
+	other := sent("5a0c1e9d-8f2b-4d3a-9c47-1e6b2f8a0d35")
+
+	t.Run("confirmation", func(t *testing.T) {
+		_, err := ParseResponse(readResponse(t, "confirmation"), other, playgroundTrust())
+		assert.ErrorIs(t, err, ErrWrongMessage)
+	})
+	t.Run("error", func(t *testing.T) {
+		_, err := ParseResponse(readResponse(t, "error-schema"), other, playgroundTrust())
+		assert.ErrorIs(t, err, ErrWrongMessage)
+	})
+	t.Run("error without a UUID", func(t *testing.T) {
+		// The interface description (3.5.2) makes uuid_zpravy optional in an
+		// error reply, so one without it is taken as it is.
+		data := strings.Replace(string(readResponse(t, "error-schema")), `uuid_zpravy="`+errorSchemaUUID+`" `, ``, 1)
+		require.NotContains(t, data, errorSchemaUUID)
+		res, err := ParseResponse([]byte(data), other, playgroundTrust())
+		require.NoError(t, err)
+		assert.Equal(t, ErrorCodeSchema, res.Error.Code)
+	})
+	t.Run("same UUID in capitals", func(t *testing.T) {
+		res, err := ParseResponse(readResponse(t, "confirmation"), sent(strings.ToUpper(confirmationUUID)), playgroundTrust())
+		require.NoError(t, err)
+		assert.Equal(t, "9765cced-b373-4a13-bbdc-986a62bc3544-ff", res.Confirmation.POK)
+	})
+	t.Run("no sale", func(t *testing.T) {
+		_, err := ParseResponse(readResponse(t, "confirmation"), nil, playgroundTrust())
+		assert.EqualError(t, err, "eet: a sale message with a UUID is needed to match the response")
+	})
 }
 
 // A namespace declaration named like an attribute is left out of the
@@ -189,7 +222,7 @@ func TestParseIgnoresUnsignedDeclarations(t *testing.T) {
 	for name, data := range tests {
 		t.Run(name, func(t *testing.T) {
 			require.NotEqual(t, confirmation, data)
-			res, err := ParseResponse([]byte(data), playgroundTrust())
+			res, err := ParseResponse([]byte(data), sent(confirmationUUID), playgroundTrust())
 			require.NoError(t, err)
 			assert.Equal(t, "9765cced-b373-4a13-bbdc-986a62bc3544-ff", res.Confirmation.POK)
 			assert.Equal(t, "f1263599-5a52-495a-a9a9-4e1e3b3efeb4", res.Header.UUID)
@@ -197,7 +230,7 @@ func TestParseIgnoresUnsignedDeclarations(t *testing.T) {
 	}
 	t.Run("error code", func(t *testing.T) {
 		data := strings.Replace(string(readResponse(t, "error-schema")), `kod="3"`, `kod="3" xmlns:kod="0"`, 1)
-		res, err := ParseResponse([]byte(data), playgroundTrust())
+		res, err := ParseResponse([]byte(data), sent(errorSchemaUUID), playgroundTrust())
 		require.NoError(t, err)
 		assert.Equal(t, ErrorCodeSchema, res.Error.Code)
 	})
@@ -215,7 +248,7 @@ func TestParseErrorNeedsCode(t *testing.T) {
 	for name, data := range tests {
 		t.Run(name, func(t *testing.T) {
 			require.NotEqual(t, errorSchema, data)
-			_, err := ParseResponse([]byte(data), playgroundTrust())
+			_, err := ParseResponse([]byte(data), sent(errorSchemaUUID), playgroundTrust())
 			assert.ErrorContains(t, err, "eet: reading response: eet: error code")
 		})
 	}
@@ -265,7 +298,7 @@ func TestParseMalformedResponses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseResponse([]byte(tt.data), playgroundTrust())
+			_, err := ParseResponse([]byte(tt.data), sent(confirmationUUID), playgroundTrust())
 			assert.EqualError(t, err, tt.err)
 		})
 	}
@@ -309,6 +342,17 @@ func TestDefaultTrustCertificates(t *testing.T) {
 	assert.Equal(t, OrganizationGFR, tr.Organization)
 	assert.False(t, tr.Playground)
 	assert.Nil(t, tr.now)
+}
+
+// UUIDs of the messages the fixtures answer.
+const (
+	confirmationUUID = "f1263599-5a52-495a-a9a9-4e1e3b3efeb4"
+	errorSchemaUUID  = "6c21a587-2dcd-4c99-9755-6347f02ac60b"
+)
+
+// sent is a sale message as far as ParseResponse needs it: its UUID.
+func sent(uuid string) *Sale {
+	return &Sale{Header: &Header{UUID: uuid}}
 }
 
 // playgroundTrust accepts the Playground's confirmations, checking
