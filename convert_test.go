@@ -1,8 +1,10 @@
 package eet
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"os"
 	"regexp"
 	"testing"
@@ -17,8 +19,8 @@ import (
 	"github.com/invopop/gobl/num"
 	"github.com/invopop/gobl/org"
 	"github.com/invopop/gobl/tax"
-	"github.com/lestrrat-go/libxml2"
-	"github.com/lestrrat-go/libxml2/xsd"
+	"github.com/lestrrat-go/helium"
+	"github.com/lestrrat-go/helium/xsd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -349,23 +351,26 @@ func TestSchemaRejects(t *testing.T) {
 func validateSchema(t *testing.T, data []byte) {
 	t.Helper()
 	if err := schemaError(t, data); err != nil {
-		var details []error
-		if verr, ok := err.(xsd.SchemaValidationError); ok {
-			details = verr.Errors()
-		}
-		t.Fatalf("sale does not validate against the schema: %v %v\n%s", err, details, data)
+		t.Fatalf("sale does not validate against the schema: %v\n%s", err, data)
 	}
 }
 
 func schemaError(t *testing.T, data []byte) error {
 	t.Helper()
-	schema, err := xsd.ParseFromFile("schemas/EETXMLSchema.xsd")
+	ctx := context.Background()
+	compiling := helium.NewErrorCollector(ctx, helium.ErrorLevelNone)
+	schema, err := xsd.NewCompiler().
+		FS(helium.PermissiveFS()).
+		ErrorHandler(compiling).
+		CompileFile(ctx, "schemas/EETXMLSchema.xsd")
+	require.NoError(t, errors.Join(append(compiling.Errors(), err)...))
+	doc, err := helium.NewParser().Parse(ctx, data)
 	require.NoError(t, err)
-	defer schema.Free()
-	doc, err := libxml2.Parse(data)
-	require.NoError(t, err)
-	defer doc.Free()
-	return schema.Validate(doc)
+	validating := helium.NewErrorCollector(ctx, helium.ErrorLevelNone)
+	if err := xsd.NewValidator(schema).ErrorHandler(validating).Validate(ctx, doc); err != nil {
+		return errors.Join(append(validating.Errors(), err)...)
+	}
+	return nil
 }
 
 func mustParseTime(t *testing.T, value string) time.Time {

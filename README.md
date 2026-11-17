@@ -117,7 +117,7 @@ checked: an app that needs it fetches I.CA's revocation lists itself.
 ## Development
 
 ```sh
-go test ./...          # the XSD checks need libxml2 (apt install libxml2-dev)
+go test ./...
 go test . -update      # rewrite the golden files in examples/out
 ```
 

@@ -9,8 +9,7 @@ on:
 jobs:
   test:
     name: Test
-    # lestrrat-go/libxml2 doesn't build against the newer libxml2 of Ubuntu 26.04.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
