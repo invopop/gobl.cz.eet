@@ -207,13 +207,18 @@ func TestParseSingleByteMutants(t *testing.T) {
 				kind, at, got.Header, got.Confirmation, got.Error, len(got.Warnings))
 		}
 	}
-	// Every offset is checked; the offsets are shared out between the CPUs
-	// to keep the test to a few seconds, also with the race detector.
+	// The offsets are shared out between the CPUs to keep the test to a few
+	// seconds. Every offset is checked, or every fourth one under the race
+	// detector, which slows parsing down several times.
+	stride := 1
+	if raceDetector {
+		stride = 4
+	}
 	var wg sync.WaitGroup
 	workers := runtime.GOMAXPROCS(0)
 	for w := range workers {
 		wg.Go(func() {
-			for i := w; i < len(original); i += workers {
+			for i := w * stride; i < len(original); i += workers * stride {
 				replaced := bytes.Clone(original)
 				replaced[i] = 'A'
 				if original[i] == 'A' {
