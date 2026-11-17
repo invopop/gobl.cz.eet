@@ -113,6 +113,11 @@ Playground, whose replies are signed under the same chain. Build your own
 `Trust` to change the roots or the expected organisation. Revocation is not
 checked: an app that needs it fetches I.CA's revocation lists itself.
 
+The response checks rely on Go's certificate and XML code, so build the app
+with the latest Go 1.26 patch release: 1.26.10 is the first that fixes what
+govulncheck finds reachable from this module. The module itself asks only for
+Go 1.26.1, so that modules importing the addon aren't forced onto a newer Go.
+
 ## Development
 
 ```sh

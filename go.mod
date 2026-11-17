@@ -1,6 +1,6 @@
 module github.com/invopop/gobl.cz.eet
 
-go 1.26.10
+go 1.26.1
 
 require (
 	github.com/beevik/etree v1.8.1
