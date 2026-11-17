@@ -158,21 +158,24 @@ func TestParseRejectsUntrustedConfirmations(t *testing.T) {
 	}
 }
 
-// A second body with another POK is never read: after the signed body it is
-// ignored, and before it the signature no longer references the body read.
-func TestParseReadsTheSignedBody(t *testing.T) {
+// A reply with a second body, carrying another POK, is refused whichever
+// body comes first: only a reply with exactly one body is read.
+func TestParseRefusesASecondBody(t *testing.T) {
 	confirmation := string(readResponse(t, "confirmation"))
 	forged := `<soapenv:Body><eet:Odpoved><eet:Hlavicka uuid_zpravy="f1263599-5a52-495a-a9a9-4e1e3b3efeb4"/>` +
 		`<eet:Potvrzeni pok="11111111-1111-4111-8111-111111111111-ff"/></eet:Odpoved></soapenv:Body>`
-
-	after := strings.Replace(confirmation, "</soapenv:Body>", "</soapenv:Body>"+forged, 1)
-	res, err := ParseResponse([]byte(after), sent(confirmationUUID), playgroundTrust())
-	require.NoError(t, err)
-	assert.Equal(t, "9765cced-b373-4a13-bbdc-986a62bc3544-ff", res.Confirmation.POK)
-
-	before := strings.Replace(confirmation, "<soapenv:Body ", forged+"<soapenv:Body ", 1)
-	_, err = ParseResponse([]byte(before), sent(confirmationUUID), playgroundTrust())
-	assert.EqualError(t, err, "eet: signature must reference the SOAP body")
+	errorSchema := string(readResponse(t, "error-schema"))
+	tests := map[string]string{
+		"after the signed body":  strings.Replace(confirmation, "</soapenv:Body>", "</soapenv:Body>"+forged, 1),
+		"before the signed body": strings.Replace(confirmation, "<soapenv:Body ", forged+"<soapenv:Body ", 1),
+		"in an unsigned error":   strings.Replace(errorSchema, "</soapenv:Body>", "</soapenv:Body>"+forged, 1),
+	}
+	for name, data := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := ParseResponse([]byte(data), sent(confirmationUUID), playgroundTrust())
+			assert.EqualError(t, err, "eet: message has more than one Body")
+		})
+	}
 }
 
 // A genuine reply to another message, a replay or a crossed answer, must not

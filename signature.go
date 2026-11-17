@@ -51,15 +51,29 @@ const (
 // EET message. It returns the certificate that made it, for the caller to
 // decide whether to trust it, and the canonical body the signature covers,
 // which is what a caller should read. Only what the service uses passes: one
-// reference to the body, exclusive canonicalization, SHA-256 and
-// RSA-SHA256, and the certificate in a BinarySecurityToken.
+// body, one header with one signature and its one reference to the body,
+// exclusive canonicalization, SHA-256 and RSA-SHA256, and the certificate in
+// a BinarySecurityToken.
 func verifySignature(doc *etree.Document) (*x509.Certificate, []byte, error) {
-	body := child(doc.Root(), nsSOAP, "Body")
+	body, err := only(doc.Root(), nsSOAP, "Body")
+	if err != nil {
+		return nil, nil, err
+	}
 	if body == nil {
 		return nil, nil, errors.New("eet: message has no SOAP body")
 	}
-	security := child(child(doc.Root(), nsSOAP, "Header"), nsWSSE, "Security")
-	signature := child(security, nsDSig, "Signature")
+	header, err := only(doc.Root(), nsSOAP, "Header")
+	if err != nil {
+		return nil, nil, err
+	}
+	security, err := only(header, nsWSSE, "Security")
+	if err != nil {
+		return nil, nil, err
+	}
+	signature, err := only(security, nsDSig, "Signature")
+	if err != nil {
+		return nil, nil, err
+	}
 	if signature == nil {
 		return nil, nil, errors.New("eet: message has no signature")
 	}
@@ -72,7 +86,10 @@ func verifySignature(doc *etree.Document) (*x509.Certificate, []byte, error) {
 		return nil, nil, fmt.Errorf("eet: unsupported signature method %s", alg)
 	}
 
-	reference := child(signedInfo, nsDSig, "Reference")
+	reference, err := only(signedInfo, nsDSig, "Reference")
+	if err != nil {
+		return nil, nil, err
+	}
 	if id := wsuID(body); id == "" || attrValue(reference, "URI") != "#"+id {
 		return nil, nil, errors.New("eet: signature must reference the SOAP body")
 	}
@@ -180,6 +197,23 @@ func child(el *etree.Element, namespace, tag string) *etree.Element {
 		}
 	}
 	return nil
+}
+
+// only returns the child element of el with the namespace and local name
+// given, or nil, and an error when there are several: a second one could
+// stand between what is signed and what is read.
+func only(el *etree.Element, namespace, tag string) (*etree.Element, error) {
+	var found *etree.Element
+	for _, c := range children(el) {
+		if c.Tag != tag || c.NamespaceURI() != namespace {
+			continue
+		}
+		if found != nil {
+			return nil, fmt.Errorf("eet: message has more than one %s", tag)
+		}
+		found = c
+	}
+	return found, nil
 }
 
 func children(el *etree.Element) []*etree.Element {

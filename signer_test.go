@@ -278,6 +278,41 @@ func TestVerifyRejectsTampering(t *testing.T) {
 			},
 			err: "eet: reading security token: illegal base64 data at input byte 0",
 		},
+		{
+			name: "second body",
+			tamper: func(doc *etree.Document) {
+				doc.Root().AddChild(findElementIn(doc, nsSOAP, "Body").Copy())
+			},
+			err: "eet: message has more than one Body",
+		},
+		{
+			name: "second header",
+			tamper: func(doc *etree.Document) {
+				doc.Root().AddChild(findElementIn(doc, nsSOAP, "Header").Copy())
+			},
+			err: "eet: message has more than one Header",
+		},
+		{
+			name: "second security header",
+			tamper: func(doc *etree.Document) {
+				findElementIn(doc, nsSOAP, "Header").AddChild(findElementIn(doc, nsWSSE, "Security").Copy())
+			},
+			err: "eet: message has more than one Security",
+		},
+		{
+			name: "second signature",
+			tamper: func(doc *etree.Document) {
+				findElementIn(doc, nsWSSE, "Security").AddChild(findElementIn(doc, nsDSig, "Signature").Copy())
+			},
+			err: "eet: message has more than one Signature",
+		},
+		{
+			name: "second reference",
+			tamper: func(doc *etree.Document) {
+				findElementIn(doc, nsDSig, "SignedInfo").AddChild(findElementIn(doc, nsDSig, "Reference").Copy())
+			},
+			err: "eet: message has more than one Reference",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

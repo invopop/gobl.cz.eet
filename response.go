@@ -178,7 +178,10 @@ func ParseResponse(data []byte, sale *Sale, trust *Trust) (*Response, error) {
 	if err := doc.ReadFromBytes(data); err != nil {
 		return nil, fmt.Errorf("eet: reading response: %w", err)
 	}
-	body := child(doc.Root(), nsSOAP, "Body")
+	body, err := only(doc.Root(), nsSOAP, "Body")
+	if err != nil {
+		return nil, err
+	}
 	if fault := child(body, nsSOAP, "Fault"); fault != nil {
 		return nil, fmt.Errorf("eet: SOAP fault %s: %s", text(child(fault, "", "faultcode")), text(child(fault, "", "faultstring")))
 	}
