@@ -1,13 +1,19 @@
 package eet
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"encoding/xml"
 	"os"
+	"reflect"
+	"runtime"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -176,6 +182,52 @@ func TestParseRefusesASecondBody(t *testing.T) {
 			assert.EqualError(t, err, "eet: message has more than one Body")
 		})
 	}
+}
+
+// Changing a single byte anywhere in a genuine confirmation, by replacing
+// it, deleting it or inserting a space before it, either gets the reply
+// refused or reads the very same response: nothing outside what the
+// signature covers can change what is read.
+func TestParseSingleByteMutants(t *testing.T) {
+	original := readResponse(t, "confirmation")
+	sale, trust := sent(confirmationUUID), playgroundTrust()
+	want, err := ParseResponse(original, sale, trust)
+	require.NoError(t, err)
+
+	var mutants, accepted atomic.Int64
+	check := func(kind string, at int, data []byte) {
+		mutants.Add(1)
+		got, err := ParseResponse(data, sale, trust)
+		if err != nil {
+			return
+		}
+		accepted.Add(1)
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("%s at byte %d read a different response: header %+v, confirmation %+v, error %+v, %d warnings",
+				kind, at, got.Header, got.Confirmation, got.Error, len(got.Warnings))
+		}
+	}
+	// Every offset is checked; the offsets are shared out between the CPUs
+	// to keep the test to a few seconds, also with the race detector.
+	var wg sync.WaitGroup
+	workers := runtime.GOMAXPROCS(0)
+	for w := range workers {
+		wg.Go(func() {
+			for i := w; i < len(original); i += workers {
+				replaced := bytes.Clone(original)
+				replaced[i] = 'A'
+				if original[i] == 'A' {
+					replaced[i] = 'B'
+				}
+				check("replace", i, replaced)
+				check("delete", i, slices.Concat(original[:i], original[i+1:]))
+				check("insert", i, slices.Concat(original[:i], []byte(" "), original[i:]))
+			}
+		})
+	}
+	wg.Wait()
+	t.Logf("%d mutants, %d accepted, all reading the original response", mutants.Load(), accepted.Load())
+	assert.NotZero(t, accepted.Load(), "no mutant was accepted, so the comparison never ran")
 }
 
 // A genuine reply to another message, a replay or a crossed answer, must not
