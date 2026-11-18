@@ -169,6 +169,22 @@ func TestNewSaleData(t *testing.T) {
 				assert.Equal(t, "309.79", data.Total)
 			},
 		},
+		{
+			name: "in JPY, which has no decimals, converted to CZK",
+			change: func(inv *bill.Invoice) {
+				inv.Currency = currency.JPY
+				inv.ExchangeRates = []*currency.ExchangeRate{
+					{From: currency.JPY, To: currency.CZK, Amount: num.MakeAmount(1512, 4)},
+				}
+				inv.Lines = inv.Lines[:1]
+				inv.Lines[0].Quantity = num.MakeAmount(1, 0)
+				inv.Lines[0].Item.Price = num.NewAmount(1003, 0)
+			},
+			check: func(t *testing.T, data *Data) {
+				// 1003 JPY at 0.1512 is 151.6536 CZK.
+				assert.Equal(t, "151.65", data.Total)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -274,7 +290,7 @@ func TestNewSaleErrors(t *testing.T) {
 		{
 			name:   "no exchange rate",
 			change: func(inv *bill.Invoice) { inv.Currency = currency.EUR },
-			err:    "eet: invoice needs an exchange rate to CZK",
+			err:    "eet: converting invoice to CZK: no exchange rate defined for 'EUR' to 'CZK'",
 		},
 	}
 	for _, tt := range tests {
