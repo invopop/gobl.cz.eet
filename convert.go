@@ -2,7 +2,6 @@ package eet
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -143,16 +142,20 @@ func soldAt(inv *bill.Invoice) time.Time {
 }
 
 // saleTotal is the amount payable in CZK with two decimals, negative for a
-// refund. An invoice in another currency is first converted with its
-// exchange rate. A zero refund stays "0.00": the schema has no "-0.00".
+// refund. A total in another currency is converted with the invoice's
+// exchange rate. It takes on the rate's decimals first, so that the product
+// is exact and rounded only once. A zero refund stays "0.00": the schema has
+// no "-0.00".
 func saleTotal(inv *bill.Invoice) (string, error) {
+	amount := inv.Totals.Payable
 	if inv.Currency != currency.CZK {
-		var err error
-		if inv, err = inv.ConvertInto(currency.CZK); err != nil {
-			return "", fmt.Errorf("eet: converting invoice to CZK: %w", err)
+		rate := currency.MatchExchangeRate(inv.ExchangeRates, inv.Currency, currency.CZK)
+		if rate == nil {
+			return "", errors.New("eet: invoice needs an exchange rate to CZK")
 		}
+		amount = rate.Convert(amount.Upscale(rate.Amount.Exp()))
 	}
-	amount := inv.Totals.Payable.Rescale(2)
+	amount = amount.Rescale(2)
 	if inv.Type == bill.InvoiceTypeCreditNote && !amount.IsZero() {
 		amount = amount.Negate()
 	}
