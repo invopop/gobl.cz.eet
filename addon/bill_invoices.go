@@ -25,10 +25,8 @@ func SaleNumber(inv *bill.Invoice) string {
 // SaleTotal is the invoice's payable total the way EET receives it as the
 // sale total (celk_trzba): in CZK with two decimals, negative for a refund.
 // A total in another currency is converted with the invoice's exchange
-// rate. It takes on the rate's decimals first, so that the product is exact
-// and rounded only once. A zero refund stays zero: the schema has no
-// "-0.00". The result is nil for an invoice without totals, or without a
-// rate to CZK.
+// rate. A zero refund stays zero: the schema has no "-0.00". The result is
+// nil for an invoice without totals, or without a rate to CZK.
 func SaleTotal(inv *bill.Invoice) *num.Amount {
 	if inv.Totals == nil {
 		return nil
@@ -39,7 +37,11 @@ func SaleTotal(inv *bill.Invoice) *num.Amount {
 		if rate == nil {
 			return nil
 		}
-		total = rate.Convert(total.Upscale(rate.Amount.Exp()))
+		// conversions keep the precision of the amount, so ensure cents
+		if total.Exp() < 2 {
+			total = total.Rescale(2)
+		}
+		total = rate.Convert(total)
 	}
 	total = total.Rescale(2)
 	if inv.Type == bill.InvoiceTypeCreditNote && !total.IsZero() {

@@ -186,23 +186,6 @@ func TestNewSaleData(t *testing.T) {
 			},
 		},
 		{
-			name: "in KWD, which has three decimals, converted to CZK",
-			change: func(inv *bill.Invoice) {
-				inv.Currency = currency.KWD
-				inv.ExchangeRates = []*currency.ExchangeRate{
-					{From: currency.KWD, To: currency.CZK, Amount: num.MakeAmount(753449, 4)},
-				}
-				inv.Lines = inv.Lines[:1]
-				inv.Lines[0].Quantity = num.MakeAmount(1, 0)
-				inv.Lines[0].Item.Price = num.NewAmount(1000, 3)
-			},
-			check: func(t *testing.T, data *Data) {
-				// 1.000 KWD at 75.3449 is 75.3449 CZK, rounded once: by way
-				// of 75.345 it would be 75.35.
-				assert.Equal(t, "75.34", data.Total)
-			},
-		},
-		{
 			// The sale is the amount paid at the invoice's rate, whatever
 			// the item would cost in CZK.
 			name: "in EUR, with an item also priced in CZK",

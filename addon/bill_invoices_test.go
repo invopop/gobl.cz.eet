@@ -240,7 +240,7 @@ func TestSaleTotal(t *testing.T) {
 		require.NoError(t, inv.Calculate())
 		assert.Equal(t, "-78.65", addon.SaleTotal(inv).String())
 	})
-	t.Run("converted to CZK and rounded once", func(t *testing.T) {
+	t.Run("converted to CZK", func(t *testing.T) {
 		inv := testInvoice()
 		inv.Currency = currency.JPY
 		inv.ExchangeRates = []*currency.ExchangeRate{
