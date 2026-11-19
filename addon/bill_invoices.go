@@ -22,6 +22,32 @@ func SaleNumber(inv *bill.Invoice) string {
 	return inv.Series.String() + "/" + inv.Code.String()
 }
 
+// SaleTotal is the invoice's payable total the way EET receives it as the
+// sale total (celk_trzba): in CZK with two decimals, negative for a refund.
+// A total in another currency is converted with the invoice's exchange
+// rate. It takes on the rate's decimals first, so that the product is exact
+// and rounded only once. A zero refund stays zero: the schema has no
+// "-0.00". The result is nil for an invoice without totals, or without a
+// rate to CZK.
+func SaleTotal(inv *bill.Invoice) *num.Amount {
+	if inv.Totals == nil {
+		return nil
+	}
+	total := inv.Totals.Payable
+	if inv.Currency != currency.CZK {
+		rate := currency.MatchExchangeRate(inv.ExchangeRates, inv.Currency, currency.CZK)
+		if rate == nil {
+			return nil
+		}
+		total = rate.Convert(total.Upscale(rate.Amount.Exp()))
+	}
+	total = total.Rescale(2)
+	if inv.Type == bill.InvoiceTypeCreditNote && !total.IsZero() {
+		total = total.Negate()
+	}
+	return &total
+}
+
 // saleNumberPattern is the porad_cis mask of the EET schema. GOBL codes
 // accept more characters than this, accented letters among them.
 var saleNumberPattern = regexp.MustCompile(`^[0-9a-zA-Z\.,:;/#\-_ ]{1,25}$`)
@@ -105,12 +131,12 @@ func saleNumberFits(val any) bool {
 // totalFits leaves missing totals and exchange rates to core and rule 02.
 func totalFits(val any) bool {
 	inv, ok := val.(*bill.Invoice)
-	if !ok || inv.Totals == nil {
+	if !ok {
 		return true
 	}
-	total := currency.Convert(inv.ExchangeRates, inv.Currency, currency.CZK, inv.Totals.Payable)
+	total := SaleTotal(inv)
 	if total == nil {
 		return true
 	}
-	return total.Abs().Rescale(2).Compare(maxTotal) <= 0
+	return total.Abs().Compare(maxTotal) <= 0
 }

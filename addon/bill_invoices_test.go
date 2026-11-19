@@ -195,6 +195,22 @@ func TestInvoiceRulesTotalAtTheLimit(t *testing.T) {
 	assert.NoError(t, rules.Validate(inv))
 }
 
+// A total in another currency is compared as EET receives it: 661,375,660
+// JPY at 0.1512 is 99,999,999.79 CZK, within the limit. Converted to whole
+// CZK, as yen have no decimals, it would be over.
+func TestInvoiceRulesTotalUnderTheLimitInJPY(t *testing.T) {
+	inv := testInvoice()
+	inv.Currency = currency.JPY
+	inv.ExchangeRates = []*currency.ExchangeRate{
+		{From: currency.JPY, To: currency.CZK, Amount: num.MakeAmount(1512, 4)},
+	}
+	inv.Tax.PricesInclude = tax.CategoryVAT
+	inv.Lines[0].Item.Price = num.NewAmount(661375660, 0)
+	require.NoError(t, inv.Calculate())
+	require.Equal(t, "661375660", inv.Totals.Payable.String())
+	assert.NoError(t, rules.Validate(inv))
+}
+
 func TestInvoiceRulesOnlyWithAddon(t *testing.T) {
 	inv := testInvoice()
 	inv.Addons = tax.WithAddons()
@@ -209,4 +225,39 @@ func TestSaleNumber(t *testing.T) {
 	assert.Equal(t, "PRG/0001", addon.SaleNumber(inv))
 	inv.Series = ""
 	assert.Equal(t, "0001", addon.SaleNumber(inv))
+}
+
+func TestSaleTotal(t *testing.T) {
+	t.Run("sale in CZK", func(t *testing.T) {
+		inv := testInvoice()
+		require.NoError(t, inv.Calculate())
+		assert.Equal(t, "78.65", addon.SaleTotal(inv).String())
+	})
+	t.Run("refund is negative", func(t *testing.T) {
+		inv := testInvoice()
+		inv.Type = bill.InvoiceTypeCreditNote
+		inv.Preceding = []*org.DocumentRef{{Series: "PRG", Code: "0000"}}
+		require.NoError(t, inv.Calculate())
+		assert.Equal(t, "-78.65", addon.SaleTotal(inv).String())
+	})
+	t.Run("converted to CZK and rounded once", func(t *testing.T) {
+		inv := testInvoice()
+		inv.Currency = currency.JPY
+		inv.ExchangeRates = []*currency.ExchangeRate{
+			{From: currency.JPY, To: currency.CZK, Amount: num.MakeAmount(1512, 4)},
+		}
+		inv.Tax.PricesInclude = tax.CategoryVAT
+		inv.Lines[0].Item.Price = num.NewAmount(661375660, 0)
+		require.NoError(t, inv.Calculate())
+		assert.Equal(t, "99999999.79", addon.SaleTotal(inv).String())
+	})
+	t.Run("no rate to CZK", func(t *testing.T) {
+		inv := testInvoice()
+		inv.Currency = currency.EUR
+		require.NoError(t, inv.Calculate())
+		assert.Nil(t, addon.SaleTotal(inv))
+	})
+	t.Run("not calculated", func(t *testing.T) {
+		assert.Nil(t, addon.SaleTotal(testInvoice()))
+	})
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/invopop/gobl.cz.eet/addon"
 	"github.com/invopop/gobl/bill"
 	"github.com/invopop/gobl/cal"
-	"github.com/invopop/gobl/currency"
 	"github.com/invopop/gobl/l10n"
 	"github.com/invopop/gobl/uuid"
 )
@@ -113,9 +112,9 @@ func newData(inv *bill.Invoice) (*Data, error) {
 	if unit == "" || device == "" {
 		return nil, errors.New("eet: invoice needs the cz-eet-unit and cz-eet-device extensions")
 	}
-	total, err := saleTotal(inv)
-	if err != nil {
-		return nil, err
+	total := addon.SaleTotal(inv)
+	if total == nil {
+		return nil, errors.New("eet: invoice needs an exchange rate to CZK")
 	}
 	return &Data{
 		TaxID:    "CZ" + inv.Supplier.TaxID.Code.String(),
@@ -123,7 +122,7 @@ func newData(inv *bill.Invoice) (*Data, error) {
 		DeviceID: device.String(),
 		Number:   addon.SaleNumber(inv),
 		SoldAt:   soldAt(inv).Format(timeFormat),
-		Total:    total,
+		Total:    total.String(),
 	}, nil
 }
 
@@ -139,27 +138,6 @@ func soldAt(inv *bill.Invoice) time.Time {
 		return earlier
 	}
 	return at
-}
-
-// saleTotal is the amount payable in CZK with two decimals, negative for a
-// refund. A total in another currency is converted with the invoice's
-// exchange rate. It takes on the rate's decimals first, so that the product
-// is exact and rounded only once. A zero refund stays "0.00": the schema has
-// no "-0.00".
-func saleTotal(inv *bill.Invoice) (string, error) {
-	amount := inv.Totals.Payable
-	if inv.Currency != currency.CZK {
-		rate := currency.MatchExchangeRate(inv.ExchangeRates, inv.Currency, currency.CZK)
-		if rate == nil {
-			return "", errors.New("eet: invoice needs an exchange rate to CZK")
-		}
-		amount = rate.Convert(amount.Upscale(rate.Amount.Exp()))
-	}
-	amount = amount.Rescale(2)
-	if inv.Type == bill.InvoiceTypeCreditNote && !amount.IsZero() {
-		amount = amount.Negate()
-	}
-	return amount.String(), nil
 }
 
 // SaleKey identifies a sale: its six values joined with '|'. Messages with
