@@ -1,0 +1,58 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "7f6245f193a5760fe314fe2391333f13fe658810ceeecdc6aa1d39e9af819084"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/payment",
+		"$regime": "CZ",
+		"$addons": [
+			"cz-eet-v1"
+		],
+		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5c",
+		"type": "receipt",
+		"series": "1234-812",
+		"code": "9",
+		"issue_date": "2027-03-22",
+		"issue_time": "15:39:01",
+		"currency": "CZK",
+		"ext": {
+			"cz-eet-delegation": "one",
+			"cz-eet-device": "Sto3",
+			"cz-eet-unit": "31"
+		},
+		"supplier": {
+			"name": "Pohonné hmoty Vltava a.s.",
+			"tax_id": {
+				"country": "CZ",
+				"code": "11892072"
+			}
+		},
+		"ordering": {
+			"issuer": {
+				"name": "Čerpací stanice Brumlík s.r.o.",
+				"tax_id": {
+					"country": "CZ",
+					"code": "36055514"
+				}
+			}
+		},
+		"lines": [
+			{
+				"i": 1,
+				"amount": "860.00"
+			}
+		],
+		"methods": [
+			{
+				"key": "card",
+				"amount": "860.00"
+			}
+		],
+		"total": "860.00"
+	}
+}

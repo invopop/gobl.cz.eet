@@ -1,0 +1,49 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "7e6c9d7c74cacf1791379a7c0da7d5b832d08e80642d35eb8a26d406ead3b866"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/payment",
+		"$regime": "CZ",
+		"$addons": [
+			"cz-eet-v1"
+		],
+		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5a",
+		"type": "receipt",
+		"series": "GYM",
+		"code": "003209",
+		"issue_date": "2027-06-01",
+		"issue_time": "17:21:45",
+		"currency": "CZK",
+		"ext": {
+			"cz-eet-device": "0001",
+			"cz-eet-prepaid": "load",
+			"cz-eet-unit": "1551"
+		},
+		"supplier": {
+			"name": "Fitness Vltava s.r.o.",
+			"tax_id": {
+				"country": "CZ",
+				"code": "27182819"
+			}
+		},
+		"lines": [
+			{
+				"i": 1,
+				"amount": "1000.00"
+			}
+		],
+		"methods": [
+			{
+				"key": "cash",
+				"amount": "1000.00"
+			}
+		],
+		"total": "1000.00"
+	}
+}

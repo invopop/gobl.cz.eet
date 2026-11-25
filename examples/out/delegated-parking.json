@@ -1,0 +1,57 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "93a698a1034cc7e8ab7161c3174b8b756f5b9a20fd2d2e5b5c6a547d5430483d"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/payment",
+		"$regime": "CZ",
+		"$addons": [
+			"cz-eet-v1"
+		],
+		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5d",
+		"type": "receipt",
+		"code": "22",
+		"issue_date": "2027-05-15",
+		"issue_time": "10:32:01",
+		"currency": "CZK",
+		"ext": {
+			"cz-eet-delegation": "many",
+			"cz-eet-device": "5/5583",
+			"cz-eet-unit": "555002"
+		},
+		"supplier": {
+			"name": "Pozemky Kvído s.r.o.",
+			"tax_id": {
+				"country": "CZ",
+				"code": "14142147"
+			}
+		},
+		"ordering": {
+			"issuer": {
+				"name": "Parkuj v klidu s.r.o.",
+				"tax_id": {
+					"country": "CZ",
+					"code": "16180330"
+				}
+			}
+		},
+		"lines": [
+			{
+				"i": 1,
+				"amount": "200.00"
+			}
+		],
+		"methods": [
+			{
+				"key": "cash",
+				"amount": "200.00"
+			}
+		],
+		"total": "200.00"
+	}
+}

@@ -1,0 +1,24 @@
+$schema: "https://gobl.org/draft-0/bill/payment"
+$addons:
+  - "cz-eet-v1"
+uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e58"
+series: "PRG"
+code: "000136"
+issue_date: "2027-01-09"
+issue_time: "17:02:11"
+ext:
+  cz-eet-unit: "303"
+  cz-eet-device: "POS-1"
+
+supplier:
+  name: "Kavárna u Mostu s.r.o."
+  tax_id:
+    country: "CZ"
+    code: "25596641"
+
+lines:
+  - refund: true
+    amount: "99.90"
+
+methods:
+  - key: "cash"
