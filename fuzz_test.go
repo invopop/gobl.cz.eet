@@ -33,16 +33,17 @@ func FuzzNewSale(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
+	client := &Client{signer: signer}
 	f.Fuzz(func(_ *testing.T, data []byte) {
 		pmt := new(bill.Payment)
 		if err := json.Unmarshal(data, pmt); err != nil {
 			return
 		}
 		_ = pmt.Calculate()
-		sale, err := saleFor(pmt)
+		sale, err := client.saleFor(pmt)
 		if err != nil {
 			return
 		}
-		_, _ = signer.sign(sale)
+		_, _ = client.Sign(sale)
 	})
 }

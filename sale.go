@@ -3,6 +3,7 @@ package eet
 import (
 	"encoding/xml"
 	"strings"
+	"sync/atomic"
 )
 
 // Sale is the data message of a sale (Trzba), with its values in the text
@@ -12,6 +13,10 @@ type Sale struct {
 	XMLName xml.Name `xml:"v4:Trzba"`
 	Header  *Header  `xml:"v4:Hlavicka"`
 	Data    *Data    `xml:"v4:Data"`
+
+	// signed is claimed by the one Sign that may sign the sale, even if the
+	// signing then fails: a message is never sent twice.
+	signed atomic.Bool
 }
 
 // Header (Hlavicka) identifies one attempt to send a sale.

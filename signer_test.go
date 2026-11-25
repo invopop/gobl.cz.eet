@@ -502,6 +502,13 @@ func newTestSigner(t *testing.T) *signer {
 	return signer
 }
 
+// newTestXMLCertificate makes a throwaway certificate as xmldsig loads it.
+func newTestXMLCertificate(t *testing.T) *xmldsig.Certificate {
+	t.Helper()
+	key, cert := newTestCertificate(t)
+	return loadTestCertificate(t, pkcs12.LegacyRC2, key, cert)
+}
+
 // newTestCertificate makes a throwaway self-signed certificate shaped like
 // the ones the CA EET issues: RSA 2048 and the merchant's tax ID as CN.
 func newTestCertificate(t testing.TB) (*rsa.PrivateKey, *x509.Certificate) {

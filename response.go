@@ -212,11 +212,7 @@ func ParseResponse(data []byte, sale *Sale, env Environment) (*Response, error) 
 	if tr == nil {
 		return nil, ErrValidation.WithMessage(fmt.Sprintf("unknown environment %q", env))
 	}
-	res, err := parseResponse(data, sale, tr)
-	if err != nil {
-		return nil, asError(err, ErrConnection)
-	}
-	return res, answerError(res)
+	return readReply(data, sale, tr)
 }
 
 // answerError is the error an answer stands for: none for a confirmation or

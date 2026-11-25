@@ -593,14 +593,14 @@ func TestNewSaleHeader(t *testing.T) {
 		assert.Equal(t, "2027-01-09T16:45:37+01:00", sentAt(time.Date(2027, 1, 9, 15, 45, 37, 987654321, time.UTC)))
 	})
 	t.Run("resend", func(t *testing.T) {
-		sale, err := saleFor(pmt, WithResend())
+		sale, err := new(Client).saleFor(pmt, WithResend())
 		require.NoError(t, err)
 		assert.False(t, sale.Header.FirstAttempt)
 		assert.Nil(t, sale.Header.Verification)
 		validateSchema(t, saleXML(t, sale))
 	})
 	t.Run("verification", func(t *testing.T) {
-		sale, err := saleFor(pmt, WithVerification())
+		sale, err := new(Client).saleFor(pmt, WithVerification())
 		require.NoError(t, err)
 		assert.True(t, sale.Header.FirstAttempt)
 		require.NotNil(t, sale.Header.Verification)
@@ -608,9 +608,9 @@ func TestNewSaleHeader(t *testing.T) {
 		validateSchema(t, saleXML(t, sale))
 	})
 	t.Run("new UUID v4 and send time for every message", func(t *testing.T) {
-		first, err := saleFor(pmt)
+		first, err := new(Client).saleFor(pmt)
 		require.NoError(t, err)
-		second, err := saleFor(pmt)
+		second, err := new(Client).saleFor(pmt)
 		require.NoError(t, err)
 		v4 := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 		assert.Regexp(t, v4, first.Header.UUID)
@@ -620,9 +620,9 @@ func TestNewSaleHeader(t *testing.T) {
 		assert.Equal(t, first.Data, second.Data)
 	})
 	t.Run("resends keep the sale key", func(t *testing.T) {
-		first, err := saleFor(pmt, WithVerification())
+		first, err := new(Client).saleFor(pmt, WithVerification())
 		require.NoError(t, err)
-		second, err := saleFor(pmt, WithResend(), WithVerification())
+		second, err := new(Client).saleFor(pmt, WithResend(), WithVerification())
 		require.NoError(t, err)
 		assert.False(t, second.Header.FirstAttempt)
 		assert.NotEqual(t, first.Header.UUID, second.Header.UUID)
@@ -716,7 +716,7 @@ func TestNewSaleErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pmt := loadExample(t, "receipt")
 			tt.change(pmt)
-			_, err := saleFor(pmt)
+			_, err := new(Client).saleFor(pmt)
 			assert.ErrorIs(t, err, ErrValidation)
 			assert.ErrorContains(t, err, tt.err)
 		})
@@ -724,14 +724,14 @@ func TestNewSaleErrors(t *testing.T) {
 	t.Run("faults reachable", func(t *testing.T) {
 		pmt := loadExample(t, "receipt")
 		pmt.Methods = []*pay.Record{paidWith(pay.MeansKeyCash, "200.00")}
-		_, err := saleFor(pmt)
+		_, err := new(Client).saleFor(pmt)
 		assert.ErrorIs(t, err, ErrValidation)
 		var faults rules.Faults
 		require.ErrorAs(t, err, &faults)
 		assert.True(t, faults.HasCode("GOBL-BILL-PAYMENT-08"))
 	})
 	t.Run("no payment", func(t *testing.T) {
-		_, err := saleFor(nil)
+		_, err := new(Client).saleFor(nil)
 		assert.EqualError(t, err, "validation: no payment")
 	})
 }
