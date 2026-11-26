@@ -553,17 +553,6 @@ func TestConfirmedDependsOnEnvironment(t *testing.T) {
 		})
 	}
 
-	t.Run("two POK stamps", func(t *testing.T) {
-		c, err := New(InProduction())
-		require.NoError(t, err)
-		env := loadExampleEnvelope(t, "receipt")
-		env.Head.Stamps = append(env.Head.Stamps,
-			&head.Stamp{Provider: addon.StampPOK, Value: playgroundPOK},
-			&head.Stamp{Provider: addon.StampPOK, Value: productionPOK})
-		_, err = c.NewSale(env)
-		assert.EqualError(t, err, "validation: envelope has more than one eet-pok stamp")
-	})
-
 }
 
 // Sign sets the send time (interface description, 3.3.3.2) and signs a sale

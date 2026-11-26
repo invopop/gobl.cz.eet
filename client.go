@@ -15,7 +15,6 @@ import (
 	"github.com/invopop/gobl"
 	"github.com/invopop/gobl.cz.eet/addon"
 	"github.com/invopop/gobl/bill"
-	"github.com/invopop/gobl/head"
 	"github.com/invopop/gobl/uuid"
 	"github.com/invopop/xmldsig"
 )
@@ -195,18 +194,7 @@ func (c *Client) checkStamp(env *gobl.Envelope, verification bool) error {
 	if env.Head == nil {
 		return nil
 	}
-	// Read the stamps directly: GOBL's lookup trips on a nil one, and takes
-	// the first of several.
-	var stamp *head.Stamp
-	for _, s := range env.Head.Stamps {
-		if s == nil || s.Provider != addon.StampPOK {
-			continue
-		}
-		if stamp != nil {
-			return ErrValidation.WithMessage("envelope has more than one eet-pok stamp")
-		}
-		stamp = s
-	}
+	stamp := env.Head.GetStamp(addon.StampPOK)
 	switch {
 	case stamp == nil:
 		return nil

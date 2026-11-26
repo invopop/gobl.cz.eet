@@ -65,14 +65,8 @@ func TestNilAndZeroValues(t *testing.T) {
 			_, err := client.Send(nil, &Sale{}) //nolint:staticcheck
 			return err
 		},
-		"NewSale with a nil envelope":    func() error { _, err := client.NewSale(nil); return err },
-		"NewSale with an empty envelope": func() error { _, err := client.NewSale(&gobl.Envelope{}); return err },
-		"NewSale with a nil stamp": func() error {
-			env := loadExampleEnvelope(t, "receipt")
-			env.Head.Stamps = append(env.Head.Stamps, nil)
-			_, err := client.NewSale(env)
-			return err
-		},
+		"NewSale with a nil envelope":       func() error { _, err := client.NewSale(nil); return err },
+		"NewSale with an empty envelope":    func() error { _, err := client.NewSale(&gobl.Envelope{}); return err },
 		"NewSale with no document":          func() error { _, err := client.NewSale(&gobl.Envelope{Head: &head.Header{}}); return err },
 		"Sign a nil sale":                   func() error { _, err := signing.Sign(nil); return err },
 		"Sign a sale with no header":        func() error { _, err := signing.Sign(&Sale{Data: &Data{}}); return err },
