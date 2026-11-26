@@ -22,7 +22,5 @@ lines:
 methods:
   - key: "card"
     amount: "90.00"
-  - key: "other"
+  - key: "other+prepaid"
     amount: "200.00"
-    ext:
-      cz-eet-prepaid: "draw"

@@ -85,10 +85,10 @@ func paidWith(key cbc.Key, value string) *pay.Record {
 	return &pay.Record{Key: key, Amount: amount(value)}
 }
 
-// drawn is an "other" payment method marked as drawn from prepaid credit. An empty
-// amount is left for GOBL to fill from the total.
+// drawn is a payment method that draws on prepaid credit. An empty amount
+// is left for GOBL to fill from the total.
 func drawn(value string) *pay.Record {
-	m := &pay.Record{Key: pay.MeansKeyOther, Ext: tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})}
+	m := &pay.Record{Key: pay.MeansKeyOther.With(addon.MeansKeyPrepaid)}
 	if value != "" {
 		m.Amount = amount(value)
 	}
@@ -368,7 +368,7 @@ func TestNewSaleData(t *testing.T) {
 			// A wallet topped up at the gym (item description, item 13).
 			name: "credit loaded",
 			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyPrepaid, addon.PrepaidLoad)
+				pmt.SetTags(addon.TagPrepaidLoad)
 				pmt.Lines = []*bill.PaymentLine{paymentLine("1000.00", false)}
 				paidInCash(pmt)
 			},
@@ -383,7 +383,7 @@ func TestNewSaleData(t *testing.T) {
 			// negative as every refund is (item description, chapter 4).
 			name: "load paid back",
 			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyPrepaid, addon.PrepaidLoad)
+				pmt.SetTags(addon.TagPrepaidLoad)
 				pmt.Lines = []*bill.PaymentLine{paymentLine("1000.00", true)}
 				paidInCash(pmt)
 			},
@@ -397,7 +397,7 @@ func TestNewSaleData(t *testing.T) {
 			// not sent as zero.
 			name: "load that cancels out",
 			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyPrepaid, addon.PrepaidLoad)
+				pmt.SetTags(addon.TagPrepaidLoad)
 				pmt.Lines = []*bill.PaymentLine{paymentLine("50.00", false), paymentLine("50.00", true)}
 				paidInCash(pmt)
 			},
@@ -513,7 +513,6 @@ func TestNewSaleData(t *testing.T) {
 			// supplier.
 			name: "delegated by one taxpayer",
 			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, addon.DelegationOne)
 				pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
 					Name:  "Čerpací stanice Brumlík s.r.o.",
 					TaxID: &tax.Identity{Country: "CZ", Code: "36055514"},
@@ -530,7 +529,7 @@ func TestNewSaleData(t *testing.T) {
 			// several taxpayers, naming one of them.
 			name: "delegated by many taxpayers to a third party",
 			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, addon.DelegationMany)
+				pmt.SetTags(addon.TagMultipleTaxpayers)
 				pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
 					Name:  "Parkuj v klidu s.r.o.",
 					TaxID: &tax.Identity{Country: "CZ", Code: "16180330"},
@@ -546,7 +545,7 @@ func TestNewSaleData(t *testing.T) {
 			// Situation 5, example 1: one of the taxpayers records it.
 			name: "delegated by many taxpayers to one of them",
 			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, addon.DelegationMany)
+				pmt.SetTags(addon.TagMultipleTaxpayers)
 			},
 			check: func(t *testing.T, data *Data) {
 				assert.Equal(t, "CZ25596641", data.TaxID)
@@ -659,16 +658,6 @@ func TestNewSaleErrors(t *testing.T) {
 			name:   "no code",
 			change: func(pmt *bill.Payment) { pmt.Code = "" },
 			err:    "[GOBL-CZ-EET-BILL-PAYMENT-03] ($.code) payment code is required",
-		},
-		{
-			name: "ordering issuer",
-			change: func(pmt *bill.Payment) {
-				pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
-					Name:  "Zámečnictví Brumlík s.r.o.",
-					TaxID: &tax.Identity{Country: "CZ", Code: "31415920"},
-				}}
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-14] payment with an ordering issuer needs extension 'cz-eet-delegation'",
 		},
 		{
 			name:   "request",

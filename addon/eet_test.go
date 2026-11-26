@@ -8,7 +8,6 @@ import (
 	"github.com/invopop/gobl/cbc"
 	"github.com/invopop/gobl/head"
 	"github.com/invopop/gobl/i18n"
-	"github.com/invopop/gobl/pay"
 	"github.com/invopop/gobl/tax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ func TestAddonRegistered(t *testing.T) {
 }
 
 func TestDefinitionsRegistered(t *testing.T) {
-	for _, key := range []cbc.Key{addon.ExtKeyUnit, addon.ExtKeyDevice, addon.ExtKeyPrepaid} {
+	for _, key := range []cbc.Key{addon.ExtKeyUnit, addon.ExtKeyDevice} {
 		ext := tax.ExtensionForKey(key)
 		require.NotNil(t, ext, key)
 		assert.Equal(t, []cbc.Key{addon.V1}, ext.Usage.Keys)
@@ -32,14 +31,11 @@ func TestDefinitionsRegistered(t *testing.T) {
 	assert.Equal(t, "EET: Confirmation Code (POK)", stamp.Name.In(i18n.EN))
 }
 
-// Each extension's usage names the schemas the addon reads it from: the
-// payment for all four, and payment methods for prepaid credit drawn.
+// Each extension's usage names the schema the addon reads it from.
 func TestExtensionUsage(t *testing.T) {
 	tests := map[cbc.Key][]string{
-		addon.ExtKeyUnit:       {bill.ShortSchemaPayment},
-		addon.ExtKeyDevice:     {bill.ShortSchemaPayment},
-		addon.ExtKeyPrepaid:    {bill.ShortSchemaPayment, pay.ShortSchemaRecord},
-		addon.ExtKeyDelegation: {bill.ShortSchemaPayment},
+		addon.ExtKeyUnit:   {bill.ShortSchemaPayment},
+		addon.ExtKeyDevice: {bill.ShortSchemaPayment},
 	}
 	for key, schemas := range tests {
 		t.Run(key.String(), func(t *testing.T) {
@@ -50,4 +46,12 @@ func TestExtensionUsage(t *testing.T) {
 			assert.ElementsMatch(t, schemas, def.Usage.Schemas)
 		})
 	}
+}
+
+func TestPaymentTags(t *testing.T) {
+	def := tax.AddonForKey(addon.V1)
+	require.NotNil(t, def)
+	ts := tax.TagSetForSchema(def.Tags, bill.ShortSchemaPayment)
+	require.NotNil(t, ts)
+	assert.Equal(t, []cbc.Key{addon.TagPrepaidLoad, addon.TagMultipleTaxpayers}, ts.Keys())
 }

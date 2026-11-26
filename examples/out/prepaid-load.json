@@ -4,7 +4,7 @@
 		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
 		"dig": {
 			"alg": "sha256",
-			"val": "7e6c9d7c74cacf1791379a7c0da7d5b832d08e80642d35eb8a26d406ead3b866"
+			"val": "e5b6b702a68e714f674c8fcfe7b71aa6b9057def00a4ed774ab92e679705e624"
 		}
 	},
 	"doc": {
@@ -12,6 +12,9 @@
 		"$regime": "CZ",
 		"$addons": [
 			"cz-eet-v1"
+		],
+		"$tags": [
+			"prepaid-load"
 		],
 		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5a",
 		"type": "receipt",
@@ -22,7 +25,6 @@
 		"currency": "CZK",
 		"ext": {
 			"cz-eet-device": "0001",
-			"cz-eet-prepaid": "load",
 			"cz-eet-unit": "1551"
 		},
 		"supplier": {

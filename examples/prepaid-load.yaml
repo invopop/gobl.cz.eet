@@ -1,6 +1,8 @@
 $schema: "https://gobl.org/draft-0/bill/payment"
 $addons:
   - "cz-eet-v1"
+$tags:
+  - "prepaid-load"
 uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5a"
 series: "GYM"
 code: "003209"
@@ -9,7 +11,6 @@ issue_time: "17:21:45"
 ext:
   cz-eet-unit: "1551"
   cz-eet-device: "0001"
-  cz-eet-prepaid: "load"
 
 supplier:
   name: "Fitness Vltava s.r.o."

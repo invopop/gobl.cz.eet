@@ -4,7 +4,7 @@
 		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
 		"dig": {
 			"alg": "sha256",
-			"val": "6fe635d31d9bb4c94dd6790146e43d064318be5390ffc4d70924248dcbc133b0"
+			"val": "51308d08f41598f6ec4e22fe4305ae4f991e169a4da15543a09a40d21cfa88ea"
 		}
 	},
 	"doc": {
@@ -12,6 +12,9 @@
 		"$regime": "CZ",
 		"$addons": [
 			"cz-eet-v1"
+		],
+		"$tags": [
+			"multiple-taxpayers"
 		],
 		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5e",
 		"type": "receipt",
@@ -21,7 +24,6 @@
 		"issue_time": "15:39:01",
 		"currency": "CZK",
 		"ext": {
-			"cz-eet-delegation": "many",
 			"cz-eet-device": "3",
 			"cz-eet-unit": "35871"
 		},

@@ -1,6 +1,6 @@
 // Package addon provides the cz-eet-v1 GOBL addon for Czech EET 2.0 sales
-// recording: the extensions that say where a sale happened and what was
-// paid from prepaid credit, the stamp for the confirmation code, and the
+// recording: the extensions that say where a sale happened, the tags and
+// payment means key for prepaid credit and shared income, the stamp for the confirmation code, and the
 // rules a payment must meet before it can be sent.
 package addon
 
@@ -70,6 +70,7 @@ func newAddon() *tax.AddonDef {
 				At:    cal.NewDateTime(2026, 11, 6, 0, 0, 0),
 			},
 		},
+		Tags:       []*tax.TagSet{paymentTags},
 		Extensions: extensions,
 		Stamps:     stamps,
 	}

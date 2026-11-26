@@ -72,9 +72,10 @@ tax ID, the amount of a single method, and the total.
 | --- | --- | --- |
 | `cz-eet-unit` | Extension in the payment's `ext` | `id_jednotky`, the recording unit number from DIS+ |
 | `cz-eet-device` | Extension in the payment's `ext` | `id_pokl`, the end device within the unit |
-| `cz-eet-prepaid` | Extension in a method's `ext`, value `draw` | `cerp_zuct`, the part drawn from prepaid credit |
-| `cz-eet-prepaid` | Extension in the payment's `ext`, value `load` | `urceno_cerp_zuct`, the total, loaded onto prepaid credit |
-| `cz-eet-delegation` | Extension in the payment's `ext`, value `one` or `many` | `eic_poverujiciho` and `povereni_vice_popl`, for a sale recorded under a delegation |
+| `prepaid` | Payment method key qualifier, as in `other+prepaid` | `cerp_zuct`, the part drawn from prepaid credit |
+| `prepaid-load` | Tag in the payment's `$tags` | `urceno_cerp_zuct`, the total, loaded onto prepaid credit |
+| `ordering.issuer` | Party in the payment | `eic_popl` and `eic_poverujiciho`, for a sale recorded under a delegation |
+| `multiple-taxpayers` | Tag in the payment's `$tags` | `povereni_vice_popl`, for a sale that is income of several taxpayers |
 | `eet-pok` | Stamp | `pok`, the confirmation code |
 
 The sale total is the payment's total, which GOBL makes negative for lines
@@ -92,8 +93,7 @@ The rules ask for what the message needs and a payment may lack: the
 or an exchange rate to CZK, a series and code that fit `porad_cis`, and a
 total, and a part drawn from prepaid credit, within ±99,999,999.99 CZK. A
 method dated on another day than the payment is refused, as each payment is
-recorded on its own, and so is a payment with an ordering issuer but without
-the delegation extension. A total that is not the sum
+recorded on its own. A total that is not the sum
 of the lines is refused too, as on a payment that was never calculated or was
 changed afterwards. Full examples are in [`examples`](./examples).
 
@@ -200,27 +200,26 @@ payment itself and refuses it with the faults when a rule doesn't pass, so a
 payment whose total isn't the sum of its lines, or that EET would take with
 the wrong number, never builds a message.
 
-`NewSale` fills `cerp_zuct` from the methods marked `cz-eet-prepaid: draw`,
-leaving it out when they add up to zero, and `urceno_cerp_zuct` with the
-total of a payment marked `cz-eet-prepaid: load`, left out when it is zero.
+`NewSale` fills `cerp_zuct` from the methods whose key has `prepaid`, such as
+`other+prepaid`, leaving it out when they add up to zero, and
+`urceno_cerp_zuct` with the total of a payment tagged `prepaid-load`, left out
+when it is zero.
 
 A sale recorded under a delegation to record sales (pověření, § 10 of the EET
 Act; item description, chapter 3, situations 4 and 5) has the taxpayer whose
 income it is as the supplier and whoever records it as the ordering issuer
-(`ordering.issuer`, the third party who issues the document), and is marked
-`cz-eet-delegation`:
+(`ordering.issuer`, the third party who issues the document):
 
-- `one`: the issuer records it for the supplier. `eic_popl` is the issuer's
-  tax ID and `eic_poverujiciho` the supplier's.
-- `many`: the sale is income of several taxpayers, and `povereni_vice_popl` is
-  sent. With an issuer, `eic_popl` is the issuer's tax ID and
-  `eic_poverujiciho` the supplier's, as the Financial Administration
+- With an issuer, the issuer records it for the supplier. `eic_popl` is the
+  issuer's tax ID and `eic_poverujiciho` the supplier's.
+- Tagged `multiple-taxpayers`, the sale is income of several taxpayers, and
+  `povereni_vice_popl` is sent. With an issuer, `eic_popl` is the issuer's tax
+  ID and `eic_poverujiciho` the supplier's, as the Financial Administration
   recommends; without one, the supplier records it and `eic_popl` is theirs.
 
 Whoever records the sale sends it from their own recording unit
 (`cz-eet-unit`) and signs it with their own certificate, whose tax ID should
-be the one in `eic_popl`, or the service adds warning 1. An issuer without the
-extension is refused. The payee, who receives the money, isn't part of the
+be the one in `eic_popl`, or the service adds warning 1. The payee, who receives the money, isn't part of the
 message.
 
 `NewSale` makes a new message, with its own UUID, on every call, and `Sign`
@@ -293,7 +292,8 @@ patch release.
 - One sale per message, as EET takes them; retries, the 48-hour limit and
   keeping track of which sales are confirmed are left to the app.
 - A load of prepaid credit and a purchase paid together (item 14, example 1)
-  go as two receipts, as GOBL's payment lines don't take extensions yet.
+  go as two receipts, as GOBL's payment lines can't yet say which of them is
+  the load.
 
 ## Development
 

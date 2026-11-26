@@ -245,16 +245,6 @@ func TestPaymentRules(t *testing.T) {
 			err: "[GOBL-CZ-EET-BILL-PAYMENT-13] payment method date must be the payment's issue date",
 		},
 		{
-			name: "ordering issuer",
-			change: func(pmt *bill.Payment) {
-				pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
-					Name:  "Pokladní služby s.r.o.",
-					TaxID: &tax.Identity{Country: "CZ", Code: "31415920"},
-				}}
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-14] payment with an ordering issuer needs extension 'cz-eet-delegation' (EET eic_poverujiciho)",
-		},
-		{
 			// Nothing was received, so there is nothing to record.
 			name: "zero",
 			change: func(pmt *bill.Payment) {
@@ -516,7 +506,7 @@ func TestSaleTotal(t *testing.T) {
 }
 
 func TestPrepaidDrawn(t *testing.T) {
-	drawn := tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})
+	prepaid := pay.MeansKeyOther.With(addon.MeansKeyPrepaid)
 	t.Run("no method marked", func(t *testing.T) {
 		pmt := testPayment()
 		require.NoError(t, pmt.Calculate())
@@ -525,9 +515,9 @@ func TestPrepaidDrawn(t *testing.T) {
 	t.Run("marked methods added up", func(t *testing.T) {
 		pmt := testPayment()
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(2000, 2), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(2000, 2)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(500, 2)},
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(4000, 2), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(4000, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
@@ -536,7 +526,7 @@ func TestPrepaidDrawn(t *testing.T) {
 	t.Run("negative in a refund", func(t *testing.T) {
 		pmt := testPayment()
 		pmt.Lines[0].Refund = true
-		pmt.Methods[0].Ext = drawn
+		pmt.Methods[0].Key = prepaid
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
 		assert.Equal(t, "-65.00", addon.PrepaidDrawn(pmt).String())
@@ -545,7 +535,7 @@ func TestPrepaidDrawn(t *testing.T) {
 		pmt := testPayment()
 		pmt.Lines[0].Amount = num.MakeAmount(65, 0)
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(65, 0), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(65, 0)},
 		}
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
@@ -559,7 +549,7 @@ func TestPrepaidDrawn(t *testing.T) {
 		}
 		pmt.Lines[0].Amount = num.MakeAmount(30000, 2)
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Currency: currency.EUR, Amount: num.MakeAmount(1000, 2), Ext: drawn},
+			{Key: prepaid, Currency: currency.EUR, Amount: num.MakeAmount(1000, 2)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(4875, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
@@ -574,8 +564,8 @@ func TestPrepaidDrawn(t *testing.T) {
 		for _, amounts := range orders {
 			pmt := testPayment()
 			pmt.Methods = []*pay.Record{
-				{Key: pay.MeansKeyOther, Amount: amounts[0], Ext: drawn},
-				{Key: pay.MeansKeyOther, Amount: amounts[1], Ext: drawn},
+				{Key: prepaid, Amount: amounts[0]},
+				{Key: prepaid, Amount: amounts[1]},
 				{Key: pay.MeansKeyCash, Amount: num.MakeAmount(460, 2)},
 			}
 			require.NoError(t, pmt.Calculate())
@@ -586,8 +576,8 @@ func TestPrepaidDrawn(t *testing.T) {
 	t.Run("marked methods adding up to zero", func(t *testing.T) {
 		pmt := testPayment()
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(5000, 2), Ext: drawn},
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(-5000, 2), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(5000, 2)},
+			{Key: prepaid, Amount: num.MakeAmount(-5000, 2)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(6500, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
@@ -602,7 +592,7 @@ func TestPrepaidDrawn(t *testing.T) {
 		}
 		pmt.Lines[0].Amount = num.MakeAmount(25123, 2)
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Currency: currency.EUR, Amount: num.MakeAmount(10, 0), Ext: drawn},
+			{Key: prepaid, Currency: currency.EUR, Amount: num.MakeAmount(10, 0)},
 		}
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
@@ -617,7 +607,7 @@ func TestPrepaidDrawn(t *testing.T) {
 		}
 		pmt.Lines[0].Amount = num.MakeAmount(30000, 2)
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Currency: currency.JPY, Amount: num.MakeAmount(1003, 0), Ext: drawn},
+			{Key: prepaid, Currency: currency.JPY, Amount: num.MakeAmount(1003, 0)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(14800, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
@@ -628,7 +618,7 @@ func TestPrepaidDrawn(t *testing.T) {
 		// GOBL refuses the payment, as it can't add the methods up either.
 		pmt := testPayment()
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Currency: currency.EUR, Amount: num.MakeAmount(100, 2), Ext: drawn},
+			{Key: prepaid, Currency: currency.EUR, Amount: num.MakeAmount(100, 2)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(4000, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
@@ -638,8 +628,8 @@ func TestPrepaidDrawn(t *testing.T) {
 	t.Run("second marked method without a rate", func(t *testing.T) {
 		pmt := testPayment()
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(2500, 2), Ext: drawn},
-			{Key: pay.MeansKeyOther, Currency: currency.EUR, Amount: num.MakeAmount(100, 2), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(2500, 2)},
+			{Key: prepaid, Currency: currency.EUR, Amount: num.MakeAmount(100, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
 		assert.Nil(t, addon.PrepaidDrawn(pmt))
@@ -650,7 +640,7 @@ func TestPrepaidDrawn(t *testing.T) {
 		pmt.Lines[0].Amount = num.MakeAmount(65, 0)
 		pmt.Total = num.MakeAmount(65, 0)
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(6040, 2), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(6040, 2)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(460, 2)},
 		}
 		require.NoError(t, rules.Validate(pmt))
@@ -659,15 +649,15 @@ func TestPrepaidDrawn(t *testing.T) {
 	t.Run("no rate to CZK", func(t *testing.T) {
 		pmt := testPayment()
 		pmt.Currency = currency.EUR
-		pmt.Methods[0].Ext = drawn
+		pmt.Methods[0].Key = prepaid
 		require.NoError(t, pmt.Calculate())
 		assert.Nil(t, addon.PrepaidDrawn(pmt))
 	})
 }
 
 func TestPrepaidDrawnLimit(t *testing.T) {
-	drawn := tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})
-	const fault = "[GOBL-CZ-EET-BILL-PAYMENT-16] prepaid credit drawn must be within ±99,999,999.99 CZK"
+	prepaid := pay.MeansKeyOther.With(addon.MeansKeyPrepaid)
+	const fault = "[GOBL-CZ-EET-BILL-PAYMENT-14] prepaid credit drawn must be within ±99,999,999.99 CZK"
 	tests := []struct {
 		name  string
 		drawn num.Amount
@@ -684,7 +674,7 @@ func TestPrepaidDrawnLimit(t *testing.T) {
 			pmt := testPayment()
 			pmt.Lines[0].Amount = num.MakeAmount(5000, 2)
 			pmt.Methods = []*pay.Record{
-				{Key: pay.MeansKeyOther, Amount: tt.drawn, Ext: drawn},
+				{Key: prepaid, Amount: tt.drawn},
 				{Key: pay.MeansKeyCash, Amount: num.MakeAmount(5000, 2).Subtract(tt.drawn)},
 			}
 			require.NoError(t, pmt.Calculate())
@@ -702,7 +692,7 @@ func TestPrepaidDrawnLimit(t *testing.T) {
 		inEUR(pmt)
 		pmt.Lines[0].Amount = num.MakeAmount(5000, 2)
 		pmt.Methods = []*pay.Record{
-			{Key: pay.MeansKeyOther, Amount: num.MakeAmount(400000000, 2), Ext: drawn},
+			{Key: prepaid, Amount: num.MakeAmount(400000000, 2)},
 			{Key: pay.MeansKeyCash, Amount: num.MakeAmount(-399995000, 2)},
 		}
 		require.NoError(t, pmt.Calculate())
@@ -710,30 +700,21 @@ func TestPrepaidDrawnLimit(t *testing.T) {
 	})
 }
 
-func TestPrepaidExtension(t *testing.T) {
-	t.Run("draw is valid on a method", func(t *testing.T) {
-		pmt := testPayment()
-		pmt.Methods[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})
-		require.NoError(t, pmt.Calculate())
-		assert.NoError(t, rules.Validate(pmt))
-	})
-	t.Run("other values are refused", func(t *testing.T) {
-		pmt := testPayment()
-		pmt.Methods[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: "load"})
-		require.NoError(t, pmt.Calculate())
-		assert.ErrorContains(t, rules.Validate(pmt), "[GOBL-CZ-EET-BILL-PAYMENT-17] ($.methods[0].ext) payment method extension 'cz-eet-prepaid' must be draw")
-	})
-	t.Run("draw refused on the payment", func(t *testing.T) {
-		pmt := testPayment()
-		pmt.Ext = pmt.Ext.Set(addon.ExtKeyPrepaid, addon.PrepaidDraw)
-		require.NoError(t, pmt.Calculate())
-		assert.ErrorContains(t, rules.Validate(pmt), "[GOBL-CZ-EET-BILL-PAYMENT-15] ($.ext) payment extension 'cz-eet-prepaid' must be load (EET urceno_cerp_zuct)")
-	})
+func TestPrepaidMeansKey(t *testing.T) {
+	for _, key := range []cbc.Key{"other+prepaid", "card+prepaid"} {
+		t.Run(key.String(), func(t *testing.T) {
+			pmt := testPayment()
+			pmt.Methods[0].Key = key
+			require.NoError(t, pmt.Calculate())
+			assert.NoError(t, rules.Validate(pmt))
+			assert.Equal(t, pmt.Total.String(), addon.PrepaidDrawn(pmt).String())
+		})
+	}
 }
 
-// loaded marks the payment as a load of prepaid credit.
+// loaded tags the payment as a load of prepaid credit.
 func loaded(pmt *bill.Payment) {
-	pmt.Ext = pmt.Ext.Set(addon.ExtKeyPrepaid, addon.PrepaidLoad)
+	pmt.SetTags(addon.TagPrepaidLoad)
 }
 
 func TestPrepaidLoaded(t *testing.T) {
@@ -780,7 +761,7 @@ func TestPrepaidLoaded(t *testing.T) {
 }
 
 func TestPrepaidLoadRules(t *testing.T) {
-	drawn := tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})
+	prepaid := pay.MeansKeyOther.With(addon.MeansKeyPrepaid)
 	tests := []struct {
 		name   string
 		change func(pmt *bill.Payment)
@@ -793,25 +774,8 @@ func TestPrepaidLoadRules(t *testing.T) {
 			name: "load paid from prepaid credit",
 			change: func(pmt *bill.Payment) {
 				loaded(pmt)
-				pmt.Methods[0].Ext = drawn
+				pmt.Methods[0].Key = prepaid
 			},
-		},
-		{
-			name: "load on a method",
-			change: func(pmt *bill.Payment) {
-				pmt.Methods[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidLoad})
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-17] ($.methods[0].ext) payment method extension 'cz-eet-prepaid' must be draw (EET cerp_zuct)",
-		},
-		{
-			name: "load on a line's document",
-			change: func(pmt *bill.Payment) {
-				pmt.Lines[0].Document = &org.DocumentRef{
-					Code: "WALLET-0042",
-					Ext:  tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidLoad}),
-				}
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-18] ($.lines[0].document.ext) payment line document must not have extension 'cz-eet-prepaid': mark the payment as a load",
 		},
 	}
 	for _, tt := range tests {
@@ -832,14 +796,16 @@ func TestPrepaidLoadRules(t *testing.T) {
 
 // delegated makes the payment one recorded by the ordering issuer on the
 // supplier's behalf.
-func delegated(value cbc.Code) func(pmt *bill.Payment) {
-	return func(pmt *bill.Payment) {
-		pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, value)
-		pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
-			Name:  "Čerpací stanice Brumlík s.r.o.",
-			TaxID: &tax.Identity{Country: "CZ", Code: "36055514"},
-		}}
-	}
+func delegated(pmt *bill.Payment) {
+	pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
+		Name:  "Čerpací stanice Brumlík s.r.o.",
+		TaxID: &tax.Identity{Country: "CZ", Code: "36055514"},
+	}}
+}
+
+// sharedIncome tags the payment as income of several taxpayers.
+func sharedIncome(pmt *bill.Payment) {
+	pmt.SetTags(addon.TagMultipleTaxpayers)
 }
 
 func TestDelegationRules(t *testing.T) {
@@ -848,8 +814,14 @@ func TestDelegationRules(t *testing.T) {
 		change func(pmt *bill.Payment)
 		err    string
 	}{
-		{name: "one taxpayer, with an issuer", change: delegated(addon.DelegationOne)},
-		{name: "many taxpayers, with an issuer", change: delegated(addon.DelegationMany)},
+		{name: "one taxpayer, with an issuer", change: delegated},
+		{
+			name: "many taxpayers, with an issuer",
+			change: func(pmt *bill.Payment) {
+				delegated(pmt)
+				sharedIncome(pmt)
+			},
+		},
 		{
 			// The payee receives the money and isn't in the message.
 			name: "payee without the extension",
@@ -857,66 +829,37 @@ func TestDelegationRules(t *testing.T) {
 				pmt.Payee = &org.Party{Name: "Pokladní služby s.r.o.", TaxID: &tax.Identity{Country: "DE", Code: "111111125"}}
 			},
 		},
-		{
-			name: "many taxpayers, without an issuer",
-			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, addon.DelegationMany)
-			},
-		},
-		{
-			name: "issuer without the extension",
-			change: func(pmt *bill.Payment) {
-				delegated(addon.DelegationOne)(pmt)
-				pmt.Ext = pmt.Ext.Delete(addon.ExtKeyDelegation)
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-14] payment with an ordering issuer needs extension 'cz-eet-delegation' (EET eic_poverujiciho)",
-		},
-		{
-			name: "another value",
-			change: func(pmt *bill.Payment) {
-				delegated(addon.DelegationOne)(pmt)
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, "some")
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-19] ($.ext) extension 'cz-eet-delegation' must be one or many",
-		},
-		{
-			name: "one taxpayer, without an issuer",
-			change: func(pmt *bill.Payment) {
-				pmt.Ext = pmt.Ext.Set(addon.ExtKeyDelegation, addon.DelegationOne)
-				pmt.Payee = &org.Party{Name: "Pokladní služby s.r.o."}
-			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-20] payment delegated by one taxpayer needs an ordering issuer, who records it (EET eic_popl)",
-		},
+		{name: "many taxpayers, without an issuer", change: sharedIncome},
 		{
 			name: "issuer without a tax ID",
 			change: func(pmt *bill.Payment) {
-				delegated(addon.DelegationOne)(pmt)
+				delegated(pmt)
 				pmt.Ordering.Issuer.TaxID = nil
 			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-21] ($.ordering.issuer.tax_id) ordering issuer tax ID with a code is required (EET eic_popl)",
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-15] ($.ordering.issuer.tax_id) ordering issuer tax ID with a code is required (EET eic_popl)",
 		},
 		{
 			name: "issuer tax ID without a code",
 			change: func(pmt *bill.Payment) {
-				delegated(addon.DelegationOne)(pmt)
+				delegated(pmt)
 				pmt.Ordering.Issuer.TaxID.Code = ""
 			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-21] ($.ordering.issuer.tax_id) ordering issuer tax ID with a code is required (EET eic_popl)",
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-15] ($.ordering.issuer.tax_id) ordering issuer tax ID with a code is required (EET eic_popl)",
 		},
 		{
 			name: "German issuer",
 			change: func(pmt *bill.Payment) {
-				delegated(addon.DelegationOne)(pmt)
+				delegated(pmt)
 				pmt.Ordering.Issuer.TaxID = &tax.Identity{Country: "DE", Code: "111111125"}
 			},
-			err: "[GOBL-CZ-EET-BILL-PAYMENT-22] ($.ordering.issuer.tax_id.country) ordering issuer tax ID must be Czech (EET eic_popl)",
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-16] ($.ordering.issuer.tax_id.country) ordering issuer tax ID must be Czech (EET eic_popl)",
 		},
 		{
 			// The service takes it with warning 7 of the interface
 			// description.
 			name: "issuer is the supplier",
 			change: func(pmt *bill.Payment) {
-				delegated(addon.DelegationOne)(pmt)
+				delegated(pmt)
 				pmt.Ordering.Issuer.TaxID = &tax.Identity{Country: "CZ", Code: pmt.Supplier.TaxID.Code}
 			},
 		},
@@ -946,7 +889,7 @@ func TestNilExchangeRate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			pmt := testPayment()
 			inEUR(pmt)
-			pmt.Methods[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})
+			pmt.Methods[0].Key = pay.MeansKeyOther.With(addon.MeansKeyPrepaid)
 			require.NoError(t, pmt.Calculate())
 			pmt.ExchangeRates = rates
 			assert.NotPanics(t, func() {
@@ -972,9 +915,9 @@ func TestAmountLimitsWithTheSmallestCoefficient(t *testing.T) {
 	})
 	t.Run("drawn", func(t *testing.T) {
 		pmt := testPayment()
-		pmt.Methods[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaid: addon.PrepaidDraw})
+		pmt.Methods[0].Key = pay.MeansKeyOther.With(addon.MeansKeyPrepaid)
 		require.NoError(t, pmt.Calculate())
 		pmt.Methods[0].Amount = smallest
-		assert.ErrorContains(t, rules.Validate(pmt), "[GOBL-CZ-EET-BILL-PAYMENT-16] prepaid credit drawn must be within ±99,999,999.99 CZK")
+		assert.ErrorContains(t, rules.Validate(pmt), "[GOBL-CZ-EET-BILL-PAYMENT-14] prepaid credit drawn must be within ±99,999,999.99 CZK")
 	})
 }

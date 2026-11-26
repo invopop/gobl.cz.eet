@@ -98,7 +98,7 @@ func newData(pmt *bill.Payment) (*Data, error) {
 		data.TaxID = issuer.TaxID.String()
 		data.DelegatingTaxID = pmt.Supplier.TaxID.String()
 	}
-	data.DelegatedByMany = pmt.Ext.Get(addon.ExtKeyDelegation) == addon.DelegationMany
+	data.DelegatedByMany = pmt.HasTags(addon.TagMultipleTaxpayers)
 	// Items that don't apply are left out, not sent as zero (item
 	// description, common information).
 	if loaded := addon.PrepaidLoaded(pmt); loaded != nil && !loaded.IsZero() {

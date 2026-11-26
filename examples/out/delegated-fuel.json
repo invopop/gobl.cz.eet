@@ -4,7 +4,7 @@
 		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
 		"dig": {
 			"alg": "sha256",
-			"val": "7f6245f193a5760fe314fe2391333f13fe658810ceeecdc6aa1d39e9af819084"
+			"val": "fa27725a2abed28c2f3986ceed3d09ed6f3fe8344cb18b393af9e7a72bb69271"
 		}
 	},
 	"doc": {
@@ -21,7 +21,6 @@
 		"issue_time": "15:39:01",
 		"currency": "CZK",
 		"ext": {
-			"cz-eet-delegation": "one",
 			"cz-eet-device": "Sto3",
 			"cz-eet-unit": "31"
 		},

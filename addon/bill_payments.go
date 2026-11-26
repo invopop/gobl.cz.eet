@@ -7,7 +7,6 @@ import (
 	"github.com/invopop/gobl/currency"
 	"github.com/invopop/gobl/l10n"
 	"github.com/invopop/gobl/num"
-	"github.com/invopop/gobl/org"
 	"github.com/invopop/gobl/rules"
 	"github.com/invopop/gobl/rules/is"
 	"github.com/invopop/gobl/tax"
@@ -36,8 +35,7 @@ func SaleTotal(pmt *bill.Payment) *num.Amount {
 	return toCZK(pmt, pmt.Total)
 }
 
-// PrepaidDrawn is the sum of the methods marked as drawn from prepaid
-// credit, the way EET receives it (cerp_zuct): in CZK with two decimals,
+// PrepaidDrawn is the sum of the methods whose key has MeansKeyPrepaid, the way EET receives it (cerp_zuct): in CZK with two decimals,
 // or nil when no method is marked or an exchange rate is missing.
 func PrepaidDrawn(pmt *bill.Payment) *num.Amount {
 	if pmt == nil {
@@ -52,7 +50,7 @@ func PrepaidDrawn(pmt *bill.Payment) *num.Amount {
 	sum := num.MakeAmount(0, exp)
 	marked := false
 	for _, m := range pmt.Methods {
-		if m == nil || m.Ext.Get(ExtKeyPrepaid) != PrepaidDraw {
+		if m == nil || !m.Key.Has(MeansKeyPrepaid) {
 			continue
 		}
 		from := m.Currency
@@ -72,12 +70,11 @@ func PrepaidDrawn(pmt *bill.Payment) *num.Amount {
 	return toCZK(pmt, sum)
 }
 
-// PrepaidLoaded is the payment's total when the payment is marked as a load
-// of prepaid credit, the way EET receives it (urceno_cerp_zuct): in CZK with
+// PrepaidLoaded is the payment's total when the payment has TagPrepaidLoad, the way EET receives it (urceno_cerp_zuct): in CZK with
 // two decimals, or nil when it isn't marked or there is no exchange rate to
 // CZK.
 func PrepaidLoaded(pmt *bill.Payment) *num.Amount {
-	if pmt == nil || pmt.Ext.Get(ExtKeyPrepaid) != PrepaidLoad {
+	if pmt == nil || !pmt.HasTags(TagPrepaidLoad) {
 		return nil
 	}
 	return SaleTotal(pmt)
@@ -162,53 +159,17 @@ func billPaymentRules() *rules.Set {
 		rules.Assert("13", "payment method date must be the payment's issue date, as each payment is recorded on its own (EET dat_trzby)",
 			is.Func("methods on the issue date", methodsOnIssueDate),
 		),
-		rules.Assert("14", "payment with an ordering issuer needs extension 'cz-eet-delegation' (EET eic_poverujiciho)",
-			is.Func("issuer has delegation", issuerHasDelegation),
-		),
-		rules.Field("ext",
-			rules.Assert("15", "payment extension 'cz-eet-prepaid' must be load (EET urceno_cerp_zuct)",
-				tax.ExtensionsHasCodes(ExtKeyPrepaid, PrepaidLoad),
-			),
-		),
-		rules.Assert("16", "prepaid credit drawn must be within ±99,999,999.99 CZK (EET cerp_zuct)",
+		rules.Assert("14", "prepaid credit drawn must be within ±99,999,999.99 CZK (EET cerp_zuct)",
 			is.Func("prepaid credit drawn fits", prepaidDrawnFits),
-		),
-		rules.Field("methods",
-			rules.Each(
-				rules.Field("ext",
-					rules.Assert("17", "payment method extension 'cz-eet-prepaid' must be draw (EET cerp_zuct)",
-						tax.ExtensionsHasCodes(ExtKeyPrepaid, PrepaidDraw),
-					),
-				),
-			),
-		),
-		rules.Field("lines",
-			rules.Each(
-				rules.Field("document",
-					rules.Field("ext",
-						rules.Assert("18", "payment line document must not have extension 'cz-eet-prepaid': mark the payment as a load",
-							tax.ExtensionsExclude(ExtKeyPrepaid),
-						),
-					),
-				),
-			),
-		),
-		rules.Field("ext",
-			rules.Assert("19", "extension 'cz-eet-delegation' must be one or many",
-				tax.ExtensionHasValidCode(ExtKeyDelegation),
-			),
-		),
-		rules.Assert("20", "payment delegated by one taxpayer needs an ordering issuer, who records it (EET eic_popl)",
-			is.Func("delegation one has issuer", delegationOneHasIssuer),
 		),
 		rules.Field("ordering",
 			rules.Field("issuer",
 				rules.Field("tax_id",
-					rules.Assert("21", "ordering issuer tax ID with a code is required (EET eic_popl)",
+					rules.Assert("15", "ordering issuer tax ID with a code is required (EET eic_popl)",
 						is.Func("tax ID with a code", taxIDHasCode),
 					),
 					rules.Field("country",
-						rules.Assert("22", "ordering issuer tax ID must be Czech (EET eic_popl)", is.In(l10n.CZ.Tax())),
+						rules.Assert("16", "ordering issuer tax ID must be Czech (EET eic_popl)", is.In(l10n.CZ.Tax())),
 					),
 				),
 			),
@@ -352,23 +313,4 @@ func prepaidDrawnFits(val any) bool {
 // smallest int64 overflows.
 func withinMaxAmount(a *num.Amount) bool {
 	return a == nil || (a.Compare(maxAmount) <= 0 && a.Compare(minAmount) >= 0)
-}
-
-// issuerOf is the payment's ordering issuer, who records a sale under a
-// delegation, or nil.
-func issuerOf(pmt *bill.Payment) *org.Party {
-	if pmt == nil || pmt.Ordering == nil {
-		return nil
-	}
-	return pmt.Ordering.Issuer
-}
-
-func issuerHasDelegation(val any) bool {
-	pmt, ok := val.(*bill.Payment)
-	return !ok || issuerOf(pmt) == nil || pmt.Ext.Get(ExtKeyDelegation) != ""
-}
-
-func delegationOneHasIssuer(val any) bool {
-	pmt, ok := val.(*bill.Payment)
-	return !ok || pmt.Ext.Get(ExtKeyDelegation) != DelegationOne || issuerOf(pmt) != nil
 }

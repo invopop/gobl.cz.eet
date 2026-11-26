@@ -4,7 +4,7 @@
 		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
 		"dig": {
 			"alg": "sha256",
-			"val": "1d06a63a83c629e7a0385311057f4494dc0e5165f5382bb987cd290644c9f5a5"
+			"val": "e5a1717d8f12c6502e7e6f96a7638883684f9411779e0f5938ef15f971604c9d"
 		}
 	},
 	"doc": {
@@ -43,11 +43,8 @@
 				"amount": "90.00"
 			},
 			{
-				"key": "other",
-				"amount": "200.00",
-				"ext": {
-					"cz-eet-prepaid": "draw"
-				}
+				"key": "other+prepaid",
+				"amount": "200.00"
 			}
 		],
 		"total": "290.00"
