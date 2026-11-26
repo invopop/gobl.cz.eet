@@ -46,7 +46,7 @@ func testSale(pmt *bill.Payment, o generateOptions, sent time.Time) (*Sale, erro
 var testNow = time.Date(2027, 1, 9, 15, 45, 37, 0, time.UTC)
 
 func TestNewSaleExamples(t *testing.T) {
-	for _, name := range []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "delegated-fuel", "delegated-parking", "delegated-craftsmen"} {
+	for _, name := range []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "delegated-fuel", "delegated-parking", "delegated-craftsmen", "exchange"} {
 		t.Run(name, func(t *testing.T) {
 			// Sent a second after the sale, as a till would send it.
 			pmt := loadExample(t, name)
