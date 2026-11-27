@@ -204,7 +204,7 @@ func sliceAt(v reflect.Value, path []sliceStep) reflect.Value {
 func TestNilEntriesInPaymentSlices(t *testing.T) {
 	c, err := New()
 	require.NoError(t, err)
-	examples := []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "delegated-fuel", "delegated-parking", "delegated-craftsmen", "exchange"}
+	examples := []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "prepaid-load-with-purchase", "delegated-fuel", "delegated-parking", "delegated-craftsmen", "exchange"}
 	covered := map[string]bool{}
 	for _, example := range examples {
 		found := map[string][]sliceStep{}

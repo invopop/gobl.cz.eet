@@ -1,8 +1,6 @@
 $schema: "https://gobl.org/draft-0/bill/payment"
 $addons:
   - "cz-eet-v1"
-$tags:
-  - "prepaid-load"
 uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5a"
 series: "GYM"
 code: "003209"
@@ -20,6 +18,8 @@ supplier:
 
 lines:
   - amount: "1000.00"
+    ext:
+      cz-eet-prepaid-load: "true"
 
 methods:
   - key: "cash"

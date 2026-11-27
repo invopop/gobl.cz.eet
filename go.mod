@@ -5,7 +5,7 @@ go 1.26.11
 require (
 	github.com/beevik/etree v1.8.1
 	github.com/go-resty/resty/v2 v2.17.2
-	github.com/invopop/gobl v0.512.0
+	github.com/invopop/gobl v0.512.1-0.20261127124109-bb14a67f756b
 	github.com/invopop/xmldsig v0.10.0
 	github.com/lestrrat-go/helium v0.11.0
 	github.com/russellhaering/goxmldsig v1.6.1

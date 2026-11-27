@@ -712,9 +712,20 @@ func TestPrepaidMeansKey(t *testing.T) {
 	}
 }
 
-// loaded tags the payment as a load of prepaid credit.
+// loaded marks every line of the payment as a load of prepaid credit.
 func loaded(pmt *bill.Payment) {
-	pmt.SetTags(addon.TagPrepaidLoad)
+	for _, l := range pmt.Lines {
+		l.Ext = l.Ext.Set(addon.ExtKeyPrepaidLoad, addon.ExtCodeTrue)
+	}
+}
+
+// loadLine is a payment line that loads prepaid credit.
+func loadLine(amount num.Amount, refund bool) *bill.PaymentLine {
+	return &bill.PaymentLine{
+		Refund: refund,
+		Amount: amount,
+		Ext:    tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaidLoad: addon.ExtCodeTrue}),
+	}
 }
 
 func TestPrepaidLoaded(t *testing.T) {
@@ -725,8 +736,7 @@ func TestPrepaidLoaded(t *testing.T) {
 	})
 	t.Run("credit loaded", func(t *testing.T) {
 		pmt := testPayment()
-		loaded(pmt)
-		pmt.Lines = []*bill.PaymentLine{{Amount: num.MakeAmount(100000, 2)}}
+		pmt.Lines = []*bill.PaymentLine{loadLine(num.MakeAmount(100000, 2), false)}
 		pmt.Methods[0].Amount = num.Amount{}
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
@@ -734,18 +744,34 @@ func TestPrepaidLoaded(t *testing.T) {
 	})
 	t.Run("load paid back", func(t *testing.T) {
 		pmt := testPayment()
-		loaded(pmt)
-		pmt.Lines = []*bill.PaymentLine{{Refund: true, Amount: num.MakeAmount(6500, 2)}}
+		pmt.Lines = []*bill.PaymentLine{loadLine(num.MakeAmount(6500, 2), true)}
 		pmt.Methods[0].Amount = num.Amount{}
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
 		assert.Equal(t, "-65.00", addon.PrepaidLoaded(pmt).String())
 	})
+	t.Run("credit loaded with a purchase", func(t *testing.T) {
+		pmt := testPayment()
+		pmt.Lines = []*bill.PaymentLine{
+			loadLine(num.MakeAmount(100000, 2), false),
+			{Amount: num.MakeAmount(5000, 2)},
+		}
+		pmt.Methods[0].Amount = num.Amount{}
+		require.NoError(t, pmt.Calculate())
+		require.NoError(t, rules.Validate(pmt))
+		assert.Equal(t, "1050.00", pmt.Total.String())
+		assert.Equal(t, "1000.00", addon.PrepaidLoaded(pmt).String())
+	})
+	t.Run("lines marked false", func(t *testing.T) {
+		pmt := testPayment()
+		pmt.Lines[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaidLoad: addon.ExtCodeFalse})
+		require.NoError(t, pmt.Calculate())
+		assert.Nil(t, addon.PrepaidLoaded(pmt))
+	})
 	t.Run("converted to CZK", func(t *testing.T) {
 		pmt := testPayment()
 		inEUR(pmt)
-		loaded(pmt)
-		pmt.Lines = []*bill.PaymentLine{{Amount: num.MakeAmount(1000, 2)}}
+		pmt.Lines = []*bill.PaymentLine{loadLine(num.MakeAmount(1000, 2), false)}
 		pmt.Methods[0].Amount = num.Amount{}
 		require.NoError(t, pmt.Calculate())
 		require.NoError(t, rules.Validate(pmt))
@@ -767,7 +793,45 @@ func TestPrepaidLoadRules(t *testing.T) {
 		change func(pmt *bill.Payment)
 		err    string
 	}{
-		{name: "load on the payment", change: loaded},
+		{name: "load on a line", change: loaded},
+		{
+			name: "load marked false",
+			change: func(pmt *bill.Payment) {
+				pmt.Lines[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaidLoad: addon.ExtCodeFalse})
+			},
+		},
+		{
+			name: "load marked with another code",
+			change: func(pmt *bill.Payment) {
+				pmt.Lines[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaidLoad: "yes"})
+			},
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-19] ($.lines[0].ext) extension 'cz-eet-prepaid-load' must be 'true' or 'false'",
+		},
+		{
+			name: "load marked on the payment",
+			change: func(pmt *bill.Payment) {
+				pmt.Ext = pmt.Ext.Set(addon.ExtKeyPrepaidLoad, addon.ExtCodeTrue)
+			},
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-18] ($.ext) extension 'cz-eet-prepaid-load' goes in the payment lines",
+		},
+		{
+			name: "multiple taxpayers marked on a line",
+			change: func(pmt *bill.Payment) {
+				pmt.Lines[0].Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyMultipleTaxpayers: addon.ExtCodeTrue})
+			},
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-20] ($.lines[0].ext) extension 'cz-eet-multiple-taxpayers' goes in the payment's extensions",
+		},
+		{
+			// The total fits, as a refund line takes the load back down.
+			name: "load over the limit",
+			change: func(pmt *bill.Payment) {
+				pmt.Lines = []*bill.PaymentLine{
+					loadLine(num.MakeAmount(10000000000, 2), false),
+					{Refund: true, Amount: num.MakeAmount(9999999000, 2)},
+				}
+			},
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-21] prepaid credit loaded must be within ±99,999,999.99 CZK (EET urceno_cerp_zuct)",
+		},
 		{
 			// Nothing in the item description keeps a load from being paid
 			// from credit, so both go in one message.
@@ -803,9 +867,9 @@ func delegated(pmt *bill.Payment) {
 	}}
 }
 
-// sharedIncome tags the payment as income of several taxpayers.
+// sharedIncome marks the payment as income of several taxpayers.
 func sharedIncome(pmt *bill.Payment) {
-	pmt.SetTags(addon.TagMultipleTaxpayers)
+	pmt.Ext = pmt.Ext.Set(addon.ExtKeyMultipleTaxpayers, addon.ExtCodeTrue)
 }
 
 func TestDelegationRules(t *testing.T) {
@@ -830,6 +894,19 @@ func TestDelegationRules(t *testing.T) {
 			},
 		},
 		{name: "many taxpayers, without an issuer", change: sharedIncome},
+		{
+			name: "one taxpayer, marked",
+			change: func(pmt *bill.Payment) {
+				pmt.Ext = pmt.Ext.Set(addon.ExtKeyMultipleTaxpayers, addon.ExtCodeFalse)
+			},
+		},
+		{
+			name: "many taxpayers marked with another code",
+			change: func(pmt *bill.Payment) {
+				pmt.Ext = pmt.Ext.Set(addon.ExtKeyMultipleTaxpayers, "1")
+			},
+			err: "[GOBL-CZ-EET-BILL-PAYMENT-17] ($.ext) extension 'cz-eet-multiple-taxpayers' must be 'true' or 'false' (EET povereni_vice_popl)",
+		},
 		{
 			name: "issuer without a tax ID",
 			change: func(pmt *bill.Payment) {

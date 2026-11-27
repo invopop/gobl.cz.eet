@@ -1,0 +1,26 @@
+$schema: "https://gobl.org/draft-0/bill/payment"
+$addons:
+  - "cz-eet-v1"
+uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e61"
+series: "GYM"
+code: "003214"
+issue_date: "2027-06-01"
+issue_time: "18:04:12"
+ext:
+  cz-eet-unit: "1551"
+  cz-eet-device: "0001"
+
+supplier:
+  name: "Fitness Vltava s.r.o."
+  tax_id:
+    country: "CZ"
+    code: "27182819"
+
+lines:
+  - amount: "1000.00"
+    ext:
+      cz-eet-prepaid-load: "true"
+  - amount: "50.00"
+
+methods:
+  - key: "cash"

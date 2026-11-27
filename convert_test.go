@@ -46,7 +46,7 @@ func testSale(pmt *bill.Payment, o generateOptions, sent time.Time) (*Sale, erro
 var testNow = time.Date(2027, 1, 9, 15, 45, 37, 0, time.UTC)
 
 func TestNewSaleExamples(t *testing.T) {
-	for _, name := range []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "delegated-fuel", "delegated-parking", "delegated-craftsmen", "exchange"} {
+	for _, name := range []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "prepaid-load-with-purchase", "delegated-fuel", "delegated-parking", "delegated-craftsmen", "exchange"} {
 		t.Run(name, func(t *testing.T) {
 			// Sent a second after the sale, as a till would send it.
 			pmt := loadExample(t, name)
@@ -78,6 +78,13 @@ func amount(value string) num.Amount {
 // paymentLine is a payment line for an amount in the payment's currency.
 func paymentLine(value string, refund bool) *bill.PaymentLine {
 	return &bill.PaymentLine{Refund: refund, Amount: amount(value)}
+}
+
+// loadLine is a payment line that loads prepaid credit.
+func loadLine(value string, refund bool) *bill.PaymentLine {
+	line := paymentLine(value, refund)
+	line.Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaidLoad: addon.ExtCodeTrue})
+	return line
 }
 
 // paidWith is a payment method for an amount in the payment's currency.
@@ -368,8 +375,7 @@ func TestNewSaleData(t *testing.T) {
 			// A wallet topped up at the gym (item description, item 13).
 			name: "credit loaded",
 			change: func(pmt *bill.Payment) {
-				pmt.SetTags(addon.TagPrepaidLoad)
-				pmt.Lines = []*bill.PaymentLine{paymentLine("1000.00", false)}
+				pmt.Lines = []*bill.PaymentLine{loadLine("1000.00", false)}
 				paidInCash(pmt)
 			},
 			check: func(t *testing.T, data *Data) {
@@ -379,12 +385,39 @@ func TestNewSaleData(t *testing.T) {
 			},
 		},
 		{
+			// A wallet topped up at the gym and a drink paid in the same
+			// payment (item description, item 14, example 1).
+			name: "credit loaded with a purchase",
+			change: func(pmt *bill.Payment) {
+				pmt.Lines = []*bill.PaymentLine{loadLine("1000.00", false), paymentLine("50.00", false)}
+				paidInCash(pmt)
+			},
+			check: func(t *testing.T, data *Data) {
+				assert.Equal(t, "1050.00", data.Total)
+				assert.Equal(t, "1000.00", data.PrepaidLoaded)
+				assert.Empty(t, data.PrepaidDrawn)
+			},
+		},
+		{
+			// A line marked "false" doesn't load credit.
+			name: "line marked as no load",
+			change: func(pmt *bill.Payment) {
+				line := paymentLine("50.00", false)
+				line.Ext = tax.ExtensionsOf(cbc.CodeMap{addon.ExtKeyPrepaidLoad: addon.ExtCodeFalse})
+				pmt.Lines = []*bill.PaymentLine{loadLine("1000.00", false), line}
+				paidInCash(pmt)
+			},
+			check: func(t *testing.T, data *Data) {
+				assert.Equal(t, "1050.00", data.Total)
+				assert.Equal(t, "1000.00", data.PrepaidLoaded)
+			},
+		},
+		{
 			// Credit paid back in cash is a refund of the load, recorded
 			// negative as every refund is (item description, chapter 4).
 			name: "load paid back",
 			change: func(pmt *bill.Payment) {
-				pmt.SetTags(addon.TagPrepaidLoad)
-				pmt.Lines = []*bill.PaymentLine{paymentLine("1000.00", true)}
+				pmt.Lines = []*bill.PaymentLine{loadLine("1000.00", true)}
 				paidInCash(pmt)
 			},
 			check: func(t *testing.T, data *Data) {
@@ -397,8 +430,7 @@ func TestNewSaleData(t *testing.T) {
 			// not sent as zero.
 			name: "load that cancels out",
 			change: func(pmt *bill.Payment) {
-				pmt.SetTags(addon.TagPrepaidLoad)
-				pmt.Lines = []*bill.PaymentLine{paymentLine("50.00", false), paymentLine("50.00", true)}
+				pmt.Lines = []*bill.PaymentLine{loadLine("50.00", false), loadLine("50.00", true)}
 				paidInCash(pmt)
 			},
 			check: func(t *testing.T, data *Data) {
@@ -529,7 +561,7 @@ func TestNewSaleData(t *testing.T) {
 			// several taxpayers, naming one of them.
 			name: "delegated by many taxpayers to a third party",
 			change: func(pmt *bill.Payment) {
-				pmt.SetTags(addon.TagMultipleTaxpayers)
+				pmt.Ext = pmt.Ext.Set(addon.ExtKeyMultipleTaxpayers, addon.ExtCodeTrue)
 				pmt.Ordering = &bill.Ordering{Issuer: &org.Party{
 					Name:  "Parkuj v klidu s.r.o.",
 					TaxID: &tax.Identity{Country: "CZ", Code: "16180330"},
@@ -545,7 +577,7 @@ func TestNewSaleData(t *testing.T) {
 			// Situation 5, example 1: one of the taxpayers records it.
 			name: "delegated by many taxpayers to one of them",
 			change: func(pmt *bill.Payment) {
-				pmt.SetTags(addon.TagMultipleTaxpayers)
+				pmt.Ext = pmt.Ext.Set(addon.ExtKeyMultipleTaxpayers, addon.ExtCodeTrue)
 			},
 			check: func(t *testing.T, data *Data) {
 				assert.Equal(t, "CZ25596641", data.TaxID)

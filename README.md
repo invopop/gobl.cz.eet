@@ -73,9 +73,9 @@ tax ID, the amount of a single method, and the total.
 | `cz-eet-unit` | Extension in the payment's `ext` | `id_jednotky`, the recording unit number from DIS+ |
 | `cz-eet-device` | Extension in the payment's `ext` | `id_pokl`, the end device within the unit |
 | `prepaid` | Payment method key qualifier, as in `other+prepaid` | `cerp_zuct`, the part drawn from prepaid credit |
-| `prepaid-load` | Tag in the payment's `$tags` | `urceno_cerp_zuct`, the total, loaded onto prepaid credit |
+| `cz-eet-prepaid-load` | Extension in a line's `ext`, value `true` or `false` | `urceno_cerp_zuct`, the part loaded onto prepaid credit |
 | `ordering.issuer` | Party in the payment | `eic_popl` and `eic_poverujiciho`, for a sale recorded under a delegation |
-| `multiple-taxpayers` | Tag in the payment's `$tags` | `povereni_vice_popl`, for a sale that is income of several taxpayers |
+| `cz-eet-multiple-taxpayers` | Extension in the payment's `ext`, value `true` or `false` | `povereni_vice_popl`, for a sale that is income of several taxpayers |
 | `eet-pok` | Stamp | `pok`, the confirmation code |
 
 The sale total is the payment's total, which GOBL makes negative for lines
@@ -89,9 +89,12 @@ Administration recommends two messages instead (item description,
 returnable packaging, example 3).
 
 The rules ask for what the message needs and a payment may lack: the
-`receipt` type, a Czech supplier tax ID, an issue time, both extensions, CZK
-or an exchange rate to CZK, a series and code that fit `porad_cis`, and a
-total, and a part drawn from prepaid credit, within ±99,999,999.99 CZK. A
+`receipt` type, a Czech supplier tax ID, an issue time, the unit and device
+extensions, CZK or an exchange rate to CZK, a series and code that fit
+`porad_cis`, and a total, and parts drawn from or loaded onto prepaid credit,
+within ±99,999,999.99 CZK. The two yes-or-no extensions take `true` or
+`false`, each in its own place: `cz-eet-prepaid-load` on a line and
+`cz-eet-multiple-taxpayers` on the payment. A
 method dated on another day than the payment is refused, as each payment is
 recorded on its own. A total that is not the sum
 of the lines is refused too, as on a payment that was never calculated or was
@@ -202,8 +205,12 @@ the wrong number, never builds a message.
 
 `NewSale` fills `cerp_zuct` from the methods whose key has `prepaid`, such as
 `other+prepaid`, leaving it out when they add up to zero, and
-`urceno_cerp_zuct` with the total of a payment tagged `prepaid-load`, left out
-when it is zero.
+`urceno_cerp_zuct` from the lines marked `cz-eet-prepaid-load: "true"`, refund
+lines subtracted, left out when they add up to zero. A load and a purchase
+paid together (item 14, example 1) are one payment with a line for each: a
+wallet topped up with 1,000 CZK and a drink for 50 CZK are sent as
+`celk_trzba="1050.00"` and `urceno_cerp_zuct="1000.00"`. A line or payment
+without the extension counts as `"false"`.
 
 A sale recorded under a delegation to record sales (pověření, § 10 of the EET
 Act; item description, chapter 3, situations 4 and 5) has the taxpayer whose
@@ -212,10 +219,11 @@ income it is as the supplier and whoever records it as the ordering issuer
 
 - With an issuer, the issuer records it for the supplier. `eic_popl` is the
   issuer's tax ID and `eic_poverujiciho` the supplier's.
-- Tagged `multiple-taxpayers`, the sale is income of several taxpayers, and
-  `povereni_vice_popl` is sent. With an issuer, `eic_popl` is the issuer's tax
-  ID and `eic_poverujiciho` the supplier's, as the Financial Administration
-  recommends; without one, the supplier records it and `eic_popl` is theirs.
+- Marked `cz-eet-multiple-taxpayers: "true"`, the sale is income of several
+  taxpayers, and `povereni_vice_popl` is sent. With an issuer, `eic_popl` is
+  the issuer's tax ID and `eic_poverujiciho` the supplier's, as the Financial
+  Administration recommends; without one, the supplier records it and
+  `eic_popl` is theirs.
 
 Whoever records the sale sends it from their own recording unit
 (`cz-eet-unit`) and signs it with their own certificate, whose tax ID should
@@ -291,9 +299,6 @@ patch release.
   (chapter 3.3), and no production reply has been read yet.
 - One sale per message, as EET takes them; retries, the 48-hour limit and
   keeping track of which sales are confirmed are left to the app.
-- A load of prepaid credit and a purchase paid together (item 14, example 1)
-  go as two receipts, as GOBL's payment lines can't yet say which of them is
-  the load.
 
 ## Development
 

@@ -13,7 +13,7 @@ import (
 // takes each through Calculate, the sale builder NewSale uses and Sign: none
 // may panic.
 func FuzzNewSale(f *testing.F) {
-	for _, name := range []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "delegated-fuel", "delegated-parking", "delegated-craftsmen"} {
+	for _, name := range []string{"receipt", "refund", "prepaid-draw", "prepaid-load", "prepaid-load-with-purchase", "delegated-fuel", "delegated-parking", "delegated-craftsmen"} {
 		data, err := os.ReadFile("examples/out/" + name + ".json")
 		if err != nil {
 			f.Fatal(err)

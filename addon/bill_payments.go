@@ -70,14 +70,48 @@ func PrepaidDrawn(pmt *bill.Payment) *num.Amount {
 	return toCZK(pmt, sum)
 }
 
-// PrepaidLoaded is the payment's total when the payment has TagPrepaidLoad, the way EET receives it (urceno_cerp_zuct): in CZK with
-// two decimals, or nil when it isn't marked or there is no exchange rate to
-// CZK.
+// PrepaidLoaded is the sum of the lines marked with ExtKeyPrepaidLoad,
+// refund lines subtracted, the way EET receives it (urceno_cerp_zuct): in CZK
+// with two decimals, or nil when no line is marked or there is no exchange
+// rate to CZK.
 func PrepaidLoaded(pmt *bill.Payment) *num.Amount {
-	if pmt == nil || !pmt.HasTags(TagPrepaidLoad) {
+	if pmt == nil {
 		return nil
 	}
-	return SaleTotal(pmt)
+	// Added up with all their decimals, as totalMatchesLines does.
+	var exp uint32
+	marked := false
+	for _, l := range pmt.Lines {
+		if loadsCredit(l) {
+			exp = max(exp, l.Amount.Exp())
+			marked = true
+		}
+	}
+	if !marked {
+		return nil
+	}
+	sum := num.MakeAmount(0, exp)
+	for _, l := range pmt.Lines {
+		switch {
+		case !loadsCredit(l):
+		case l.Refund:
+			sum = sum.Subtract(l.Amount)
+		default:
+			sum = sum.Add(l.Amount)
+		}
+	}
+	return toCZK(pmt, sum)
+}
+
+func loadsCredit(l *bill.PaymentLine) bool {
+	return l != nil && l.Ext.Get(ExtKeyPrepaidLoad) == ExtCodeTrue
+}
+
+// MultipleTaxpayers says whether the payment is marked with
+// ExtKeyMultipleTaxpayers as income of several taxpayers, the way EET
+// receives it (povereni_vice_popl).
+func MultipleTaxpayers(pmt *bill.Payment) bool {
+	return pmt != nil && pmt.Ext.Get(ExtKeyMultipleTaxpayers) == ExtCodeTrue
 }
 
 // toCZK converts an amount in the payment's currency to CZK with two
@@ -149,6 +183,24 @@ func billPaymentRules() *rules.Set {
 			rules.Assert("10", "extension 'cz-eet-device' must be 1 to 20 letters, digits, spaces or . , : ; / # - _ (EET id_pokl)",
 				tax.ExtensionHasValidCode(ExtKeyDevice),
 			),
+			rules.Assert("17", "extension 'cz-eet-multiple-taxpayers' must be 'true' or 'false' (EET povereni_vice_popl)",
+				tax.ExtensionHasValidCode(ExtKeyMultipleTaxpayers),
+			),
+			rules.Assert("18", "extension 'cz-eet-prepaid-load' goes in the payment lines",
+				tax.ExtensionsExclude(ExtKeyPrepaidLoad),
+			),
+		),
+		rules.Field("lines",
+			rules.Each(
+				rules.Field("ext",
+					rules.Assert("19", "extension 'cz-eet-prepaid-load' must be 'true' or 'false'",
+						tax.ExtensionHasValidCode(ExtKeyPrepaidLoad),
+					),
+					rules.Assert("20", "extension 'cz-eet-multiple-taxpayers' goes in the payment's extensions",
+						tax.ExtensionsExclude(ExtKeyMultipleTaxpayers),
+					),
+				),
+			),
 		),
 		rules.Assert("11", "payment total must be within ±99,999,999.99 CZK (EET celk_trzba)",
 			is.Func("total fits", totalFits),
@@ -161,6 +213,9 @@ func billPaymentRules() *rules.Set {
 		),
 		rules.Assert("14", "prepaid credit drawn must be within ±99,999,999.99 CZK (EET cerp_zuct)",
 			is.Func("prepaid credit drawn fits", prepaidDrawnFits),
+		),
+		rules.Assert("21", "prepaid credit loaded must be within ±99,999,999.99 CZK (EET urceno_cerp_zuct)",
+			is.Func("prepaid credit loaded fits", prepaidLoadedFits),
 		),
 		rules.Field("ordering",
 			rules.Field("issuer",
@@ -306,6 +361,15 @@ func prepaidDrawnFits(val any) bool {
 		return true
 	}
 	return withinMaxAmount(PrepaidDrawn(pmt))
+}
+
+// prepaidLoadedFits leaves a missing exchange rate to rule 02.
+func prepaidLoadedFits(val any) bool {
+	pmt, ok := val.(*bill.Payment)
+	if !ok {
+		return true
+	}
+	return withinMaxAmount(PrepaidLoaded(pmt))
 }
 
 // withinMaxAmount says whether a missing amount, or one between the smallest

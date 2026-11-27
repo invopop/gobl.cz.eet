@@ -1,8 +1,6 @@
 $schema: "https://gobl.org/draft-0/bill/payment"
 $addons:
   - "cz-eet-v1"
-$tags:
-  - "multiple-taxpayers"
 uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5e"
 series: "12252"
 code: "22"
@@ -11,6 +9,7 @@ issue_time: "15:39:01"
 ext:
   cz-eet-unit: "35871"
   cz-eet-device: "3"
+  cz-eet-multiple-taxpayers: "true"
 
 supplier:
   name: "Kvído Brumlík"
