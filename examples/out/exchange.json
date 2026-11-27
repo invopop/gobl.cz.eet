@@ -1,0 +1,53 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "e2f09142062dbe49d3e75a6cfd4751f9c1853b1ead5e2c3d90c021d49859e18b"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/payment",
+		"$regime": "CZ",
+		"$addons": [
+			"cz-eet-v1"
+		],
+		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e60",
+		"type": "receipt",
+		"series": "KASA3",
+		"code": "88140",
+		"issue_date": "2027-08-15",
+		"issue_time": "16:47:06",
+		"currency": "CZK",
+		"ext": {
+			"cz-eet-device": "Kasa3",
+			"cz-eet-unit": "81"
+		},
+		"supplier": {
+			"name": "Oděvy Novák s.r.o.",
+			"tax_id": {
+				"country": "CZ",
+				"code": "00000019"
+			}
+		},
+		"lines": [
+			{
+				"i": 1,
+				"refund": true,
+				"amount": "5000.00"
+			},
+			{
+				"i": 2,
+				"amount": "6500.00"
+			}
+		],
+		"methods": [
+			{
+				"key": "cash",
+				"amount": "1500.00"
+			}
+		],
+		"total": "1500.00"
+	}
+}

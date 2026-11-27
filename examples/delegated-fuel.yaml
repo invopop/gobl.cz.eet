@@ -1,0 +1,30 @@
+$schema: "https://gobl.org/draft-0/bill/payment"
+$addons:
+  - "cz-eet-v1"
+uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5c"
+series: "1234-812"
+code: "9"
+issue_date: "2027-03-22"
+issue_time: "15:39:01"
+ext:
+  cz-eet-unit: "31"
+  cz-eet-device: "Sto3"
+
+supplier:
+  name: "Pohonné hmoty Vltava a.s."
+  tax_id:
+    country: "CZ"
+    code: "11892072"
+
+ordering:
+  issuer:
+    name: "Čerpací stanice Brumlík s.r.o."
+    tax_id:
+      country: "CZ"
+      code: "36055514"
+
+lines:
+  - amount: "860.00"
+
+methods:
+  - key: "card"

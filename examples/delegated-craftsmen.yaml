@@ -1,0 +1,24 @@
+$schema: "https://gobl.org/draft-0/bill/payment"
+$addons:
+  - "cz-eet-v1"
+uuid: "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e5e"
+series: "12252"
+code: "22"
+issue_date: "2027-03-22"
+issue_time: "15:39:01"
+ext:
+  cz-eet-unit: "35871"
+  cz-eet-device: "3"
+  cz-eet-multiple-taxpayers: "true"
+
+supplier:
+  name: "Kvído Brumlík"
+  tax_id:
+    country: "CZ"
+    code: "27182827"
+
+lines:
+  - amount: "25000.00"
+
+methods:
+  - key: "cash"

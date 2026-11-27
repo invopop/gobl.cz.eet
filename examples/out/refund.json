@@ -1,0 +1,49 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "9eaf1350d060622c30110bf9f1488cdcdf2c4279d2d1b9719387f142ca003daa"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/payment",
+		"$regime": "CZ",
+		"$addons": [
+			"cz-eet-v1"
+		],
+		"uuid": "019a5d2e-4c1b-7f3a-9e8d-2b6c0a1f4e58",
+		"type": "receipt",
+		"series": "PRG",
+		"code": "000136",
+		"issue_date": "2027-01-09",
+		"issue_time": "17:02:11",
+		"currency": "CZK",
+		"ext": {
+			"cz-eet-device": "POS-1",
+			"cz-eet-unit": "303"
+		},
+		"supplier": {
+			"name": "Kavárna u Mostu s.r.o.",
+			"tax_id": {
+				"country": "CZ",
+				"code": "25596641"
+			}
+		},
+		"lines": [
+			{
+				"i": 1,
+				"refund": true,
+				"amount": "99.90"
+			}
+		],
+		"methods": [
+			{
+				"key": "cash",
+				"amount": "-99.90"
+			}
+		],
+		"total": "-99.90"
+	}
+}
